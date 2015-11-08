@@ -40,6 +40,18 @@ def delete_queue(queue_name, host='localhost', user=None, password=None):
     res = session.delete('{0}{1}'.format(full_host, _QUEUE_ITEM.format(name=queue_name)))
     return True if res.status_code == 204 else False
 
+def info_queue(queue_name, host='localhost', user=None, password=None):
+    """ Info queue """
+    raise NotImplemented()
+
+def purge_queue(queue_name, host='localhost', user=None, password=None):
+    """ Purge queue """
+    raise NotImplemented()
+
+def list_queues(host='localhost', user=None, password=None):
+    """ List queues"""
+    raise NotImplemented()
+
 def create_queue(queue_name, host='localhost', user=None, password=None):
     """ Adds a new queue.
 
