@@ -17,6 +17,7 @@ common operations used by the tests.
 """
 import os
 import logging
+import traceback
 
 from python_amqp.rabbitmqrpc import (
     create_queue,
@@ -27,8 +28,10 @@ from python_amqp.rabbitmqrpc import (
 
 from python_amqp.consume_many_queues.pika import Thread as PikaThread
 from python_amqp.consume_many_queues.pika import Async as PikaAsync
+from python_amqp.consume_many_queues.consume_many_queues_base import TestFailed
 
-TESTS = [PikaThread, PikaAsync]
+def _installed_tests():
+    return [PikaThread, PikaAsync]
 
 # Default test values, they can be override as a paramaters of the
 # run function to run them with different values.
@@ -42,23 +45,20 @@ QUEUE_NAME = "test.consume_many_queues_{number}"
 
 def list():
     """
-    Prints a list of the implemented tests paterns composed by lines of
-    "test name: short description", use the test name to filter wich
-    tests do you wanna run or get more info.
+    Returns the list of names and descriptions of implemented tests.
     """
-    print "{}".format(os.SEP).\
-        join([test.NAME + ":" + test.DESCRIPTION for test in TESTS])
+    return [test.NAME + ": " + test.DESCRIPTION for test in _installed_tests()]
 
 
 def info(test_name):
     """
-    Returns the whole info of a test
+    Returns the docstring of a test, or a string error if it is not found.
     """
-    test = filter(lambda t: t.name == test_name, TESTS)
+    test = filter(lambda t: t.NAME == test_name, _installed_tests())
     if not test:
-        print "Test {} have not found".format(test_name)
+        return "Test {} have not found".format(test_name)
     else:
-        print test.__doc__
+        return test[0].__doc__
 
 
 def run(queues=QUEUES, messages=MESSAGES):
@@ -81,22 +81,23 @@ def run(queues=QUEUES, messages=MESSAGES):
         # create all AMQP entities and bind the queues. We
         # use a "macro" that checks that all was fine, otherwise
         # raises a exception.
-        logging.debug("Creating the Exchange {}".format(EXCHANGE))
-        AMQP_OPERATION(create_exchange, (EXCHANGE,), True)
+        logging.debug("Creating the Exchange {}".format(EXCHANGE_NAME))
+        AMQP_OPERATION(create_exchange, (EXCHANGE_NAME,), True)
         for i in xrange(0, queues):
             queue_name = QUEUE_NAME.format(number=i)
             logging.debug("Creating the Queue {} and binding it".format(queue_name))
             AMQP_OPERATION(create_queue, (queue_name,), True)
-            AMQP_OPERATION(set_binding, (EXCHANGE, queue_name,), True)
+            AMQP_OPERATION(set_binding, (EXCHANGE_NAME, queue_name,), True)
 
         # run the tests and collect the results
-        for test in TESTS:
-            t = test(EXCHANGE, QUEUE_NAME, queues, messages)
-            for parameters in test.parameters():
+        results = []
+        for test in _installed_tests():
+            t = test(EXCHANGE_NAME, QUEUE_NAME, queues, messages)
+            for parameters in t.parameters():
                 logging.info("{} running with params {}".format(test.NAME, parameters))
                 try:
                     t.setUp(**parameters)
-                    print "Real {}s, User {}s, Sys {}s".format(*t.run(**parameters))
+                    results.append(t.run(**parameters))
                 except (Exception, TestFailed), e:
                     logging.warning("{} failed {}".format(test.NAME, str(e)))
                     logging.debug(traceback.format_exc())
@@ -110,6 +111,8 @@ def run(queues=QUEUES, messages=MESSAGES):
     finally:
         # We have to remove the AMQP entities created before
         # event there was a exception.
-        delete_exchange(EXCHANGE)
+        delete_exchange(EXCHANGE_NAME)
         for i in xrange(0, queues):
             delete_queue(QUEUE_NAME.format(number=i))
+
+    return results
