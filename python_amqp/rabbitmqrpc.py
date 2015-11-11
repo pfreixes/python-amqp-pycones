@@ -28,9 +28,8 @@ _QUEUE_ITEM = _QUEUES + '/%2f/{name}'
 def prepare_session(user=None, password=None):
     """ Returns a requests session with the basic auth required by the rabbitmq plugin """
     session = requests.Session()
-    if user:
-        session.auth = (user, password)
-        session.headers.update({'Content-Type': 'application/json'})
+    session.auth = (user or 'guest', password or 'guest')
+    session.headers.update({'Content-Type': 'application/json'})
     return session
 
 def delete_queue(queue_name, host='localhost', user=None, password=None):
@@ -42,15 +41,24 @@ def delete_queue(queue_name, host='localhost', user=None, password=None):
 
 def info_queue(queue_name, host='localhost', user=None, password=None):
     """ Info queue """
-    raise NotImplemented()
+    session = prepare_session(user=user, password=password)
+    full_host = 'http://{}:15672'.format(host)
+    res = session.get('{0}{1}'.format(full_host, _QUEUE_ITEM.format(name=queue_name)))
+    return loads(res.text) if res.status_code == 200 else None
 
 def purge_queue(queue_name, host='localhost', user=None, password=None):
     """ Purge queue """
-    raise NotImplemented()
+    session = prepare_session(user=user, password=password)
+    full_host = 'http://{}:15672'.format(host)
+    res = session.delete('{0}{1}/contents'.format(full_host, _QUEUE_ITEM.format(name=queue_name)))
+    return True if res.status_code == 204 else False
 
 def list_queues(host='localhost', user=None, password=None):
     """ List queues"""
-    raise NotImplemented()
+    session = prepare_session(user=user, password=password)
+    full_host = 'http://{}:15672'.format(host)
+    res = session.get('{0}{1}'.format(full_host, _QUEUES))
+    return [queue['name'] for queue in loads(res.text)] if res.status_code == 200 else None
 
 def create_queue(queue_name, host='localhost', user=None, password=None):
     """ Adds a new queue.
@@ -183,3 +191,9 @@ def list_bindings():
     _SERVER_HOST = 'http://{}:15672'.format(get_settings().AMQP_HOST)
     res = session.get('{0}{1}'.format(_SERVER_HOST, _BINDINGS))
     return loads(res.text)
+
+
+if __name__ == "__main__":
+   import sys
+   print info_queue(sys.argv[1])['messages']
+   print purge_queue(sys.argv[1]) 
