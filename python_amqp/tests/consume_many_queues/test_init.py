@@ -80,7 +80,7 @@ class TestRun(object):
 
         results = run()
 
-        assert results == [(1, 2, 3), (3, 2, 1)]
+        assert results == [('Foo', {}, 1, 2, 3), ('Bar', {}, 3, 2, 1)]
         assert delete_exchange.call_count == 1
         assert create_exchange.call_count == 1
         assert create_queue.call_count == QUEUES

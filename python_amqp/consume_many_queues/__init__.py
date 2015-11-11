@@ -97,7 +97,7 @@ def run(queues=QUEUES, messages=MESSAGES):
                 logging.info("{} running with params {}".format(test.NAME, parameters))
                 try:
                     t.setUp(**parameters)
-                    results.append(t.run(**parameters))
+                    results.append((test.NAME, parameters) + t.run(**parameters))
                 except (Exception, TestFailed), e:
                     logging.warning("{} failed {}".format(test.NAME, str(e)))
                     logging.debug(traceback.format_exc())
