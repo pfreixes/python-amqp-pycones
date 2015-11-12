@@ -22,6 +22,11 @@ from python_amqp.rabbitmqrpc import (
     info_queue)
 
 
+# AMQP names
+EXCHANGE_NAME = "test.consume_many_queues"
+QUEUE_NAME = "test.consume_many_queues_{number}"
+
+
 class TestFailed(Exception):
     """Adhoc exception to raise exceptional issuess because of Test didn't
     perform the task to consume all messages even it finished fine"""
@@ -81,13 +86,6 @@ class ConsumeManyQueuesBase(object):
             # raise the exception got
             self._purge_messages()
             raise
-        else:
-            if self._purge_messages() > 0:
-                # The test finisheded ok but there are still
-                # messages published, this is a error. We
-                # raise the properly error
-                logging.warning('Test left messages still to process, raising an error')
-                raise TestFailed()
 
         return real, user, sys
 
@@ -138,7 +136,7 @@ class ConsumeManyQueuesBase(object):
             queue_name = self.queue_name.format(number=i)
             info = info_queue(queue_name)
             if info['messages'] > 0:
-                logging.debug('Queue {} has still {} messages'.format(queue_name, info['messages']))
+                logging.info('Queue {} has still {} messages'.format(queue_name, info['messages']))
                 total = total + info['messages']
                 purge_queue(queue_name)
 

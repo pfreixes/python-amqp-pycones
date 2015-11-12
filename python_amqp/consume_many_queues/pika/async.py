@@ -6,6 +6,8 @@ Consume Many Queues Pika Asyncronous implementation
 """
 import pika
 
+from itertools import takewhile, izip, cycle
+
 from python_amqp.consume_many_queues.consume_many_queues_base import ConsumeManyQueuesBase
 
 
@@ -111,5 +113,6 @@ class Async(ConsumeManyQueuesBase):
 
     def test(self, connections=2):
         """ Start the connections to consume all messaages """
+        raise NotImplemented()
         map(lambda consumer: consumer.start(), self._consumers)
         return map(lambda thread: thread.join(), self._threads)

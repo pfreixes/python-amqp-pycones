@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Many queues entry point. Use as a main script to run the tests or for just
+get info about each implementation.
+
+:moduleauthor: Pau Freixes, pfreixes@gmail.com
+"""
+
+import sys
+import logging
+
+from optparse import OptionParser
+
+from python_amqp.consume_many_queues import (
+    list as list_tests,
+    run,
+    info,
+    MESSAGES,
+    QUEUES)
+
+USAGE = """
+many_queues 0.1 pfreixes
+
+usage: many_queues [global options] <comand> [command options] arg1 arg2
+    options:
+       -v Run in verbose mode, debug level mode.
+       -q Run quiet.
+
+    commands:
+       list  Get a list of names and short descriptions of implemented tests
+       info  <test name> Get a deatail info of a implemlented test
+       run   Wihout arguments runs all tests, but use them to run only those ones
+             given as arguments. This command also suports the following options
+             --messages <num messagess used> --queues <num queues used>
+"""
+
+
+def main():
+    parser = OptionParser(usage=USAGE)
+    parser.add_option("-v", action="store_true", default=False, dest="verbose",
+                      help="Run with debug level")
+    parser.add_option("-q", action="store_true", default=False, dest="quiet",
+                      help="Run without logging ")
+    options, args = parser.parse_args()
+
+    try:
+        command = args[0]
+    except IndexError:
+        parser.print_usage()
+        sys.exit(-1)
+
+    root = logging.getLogger()
+
+    if options.quiet:
+        root.addHandler(logging.handlers.NullHandler())
+    else:
+        root.setLevel(logging.DEBUG if options.verbose else logging.INFO)
+        
+        # configure also the requests and pika module logging to use the
+        # warning level.
+        logging.getLogger('requests').setLevel(logging.WARNING)
+        logging.getLogger('pika').setLevel(logging.WARNING)
+        
+
+    if command == 'list':
+        print '\n'.join(list_tests())
+    elif command == 'info':
+        try:
+            test_name = args[1]
+        except IndexError:
+            print "info command needs as argument a test name"
+            sys.exit(-1)
+        print info(test_name)
+    elif command == 'run':
+        run_parser = OptionParser()
+        run_parser.add_option("--messages", type="int", default=None,
+                              dest="messages",
+                              help="Number of messages published. Default {}".format(MESSAGES))
+        run_parser.add_option("--queues", type="int", default=None,
+                              dest="queues",
+                              help="Number of queues used. Default {}".format(QUEUES))
+        run_options, run_args = run_parser.parse_args(args[1:])
+
+        results = run(tests=run_args[1:], queues=run_options.queues, messages=run_options.messages)
+        print "+------------+-------------------------+---------+---------+---------+-------+"
+        print "|Name        |Parameters               |     Real|     User|      Sys|  Msg/s|"
+        print "+------------+-------------------------+---------+---------+---------+-------+"
+        for result in results:
+            name, parameters, real, user, sys_, msgs_second = result
+            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(11), str(parameters).ljust(25), real, user, sys_, msgs_second)
+        
+        print "+-----------+-------------------------+---------+---------+---------+--------+"
+    else:
+        print "Command `{}` not supported".format(command)
+        sys.exit(-1)
+        
+
+
+if __name__ == "__main__":
+    main()

@@ -19,7 +19,7 @@ class Publisher(object):
         self._connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
         self._channel = self._connection.channel()
 
-    def publish(self, message, exchange, routing_key=None):
+    def publish(self, message, exchange, routing_key=''):
         """ Send a message over the `exchange` using a `routing_key`.
 
         :param message: string, message by it self as string buffer. No codified.

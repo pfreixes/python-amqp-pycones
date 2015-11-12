@@ -69,7 +69,7 @@ def create_queue(queue_name, host='localhost', user=None, password=None):
         # add here future body params
     }
     full_host = 'http://{}:15672'.format(host)
-    res = session.put('{0}{1}'.format(full_host, _QUEUE_ITEM.format(name=name)),
+    res = session.put('{0}{1}'.format(full_host, _QUEUE_ITEM.format(name=queue_name)),
                       data=dumps(body))
 
     return True if res.status_code == 204 else False
@@ -126,7 +126,7 @@ def set_binding(source, dest, dest_type, routing_key=None, host='localhost', use
                          'Destination type must be either "exchange" or "queue".'
                          ' Current: {2}'.format(source, dest, dest_type))
     session = prepare_session(user=user, password=password)
-    body = {'routing_key': routing_key} if routing_key else None
+    body = {'routing_key': routing_key if routing_key else None}
     base_uri = 'http://{}:15672'.format(host)
     res = session.post('{0}{1}'.format(base_uri, _BINDING_POST.format(source=source,
                                                                       dest=dest,

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Consuume Many queues tests
+Consume Many queues tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 Consume many queues tests runs each different design patterns implemented to consume
 one amount of messages from many queues where each queue has the same number of messages, and
@@ -24,24 +24,22 @@ from python_amqp.rabbitmqrpc import (
     create_exchange,
     delete_queue,
     delete_exchange,
+    purge_queue,
     set_binding)
 
 from python_amqp.consume_many_queues.pika import Thread as PikaThread
 from python_amqp.consume_many_queues.pika import Async as PikaAsync
 from python_amqp.consume_many_queues.consume_many_queues_base import TestFailed
+from python_amqp.consume_many_queues.consume_many_queues_base import EXCHANGE_NAME, QUEUE_NAME
 
 def _installed_tests():
-    return [PikaThread, PikaAsync]
+    return [PikaThread]
+    #return [PikaThread, PikaAsync]
 
 # Default test values, they can be override as a paramaters of the
 # run function to run them with different values.
-QUEUES = 1000
+QUEUES = 500
 MESSAGES = 80
-
-# AMQP names
-EXCHANGE_NAME = "test.consume_many_queues"
-QUEUE_NAME = "test.consume_many_queues_{number}"
-
 
 def list():
     """
@@ -61,14 +59,17 @@ def info(test_name):
         return test[0].__doc__
 
 
-def run(queues=QUEUES, messages=MESSAGES):
+def run(tests=None, queues=None, messages=None):
     """ Runs all many queues consumer tests using the `queues` amount
     with the `messages` amount published in each one.
 
+    The tests to be executed can be filtered using the *args, setting as
+    arguments those test that we wanna run.
+
+    :param tests: list, Runs only these tests i.e ['pika_thread', ['pika_async']
+                               By default runs all tests
     :param queues: integer, defaults QUEUES. Runs the test using this amount of queues
     :param messages: integer, defaults MESSAGES. Runs the test using this amount of messages
-    :param force: boolean, defaults False. If true runs even one test was wrong
-    :param human_readable: boolean, defaults False. If true returns the results in nice format
     """
     logging.info("Running tests")
 
@@ -77,27 +78,52 @@ def run(queues=QUEUES, messages=MESSAGES):
             raise Exception("{}({}) did not return {}".format(f.__name__,
                                                               args,
                                                               result))
+
+    queues_ = queues if queues else QUEUES
+    messages_ = messages if messages else MESSAGES
+    tests_ = tests
+
+    logging.info('Running the tests with {} messages over {} queues'.format(messages_,
+                                                                            queues_))
+
     try:
         # create all AMQP entities and bind the queues. We
         # use a "macro" that checks that all was fine, otherwise
         # raises a exception.
-        logging.debug("Creating the Exchange {}".format(EXCHANGE_NAME))
-        AMQP_OPERATION(create_exchange, (EXCHANGE_NAME,), True)
-        for i in xrange(0, queues):
+        logging.info("Creating the Exchange {}".format(EXCHANGE_NAME))
+        AMQP_OPERATION(create_exchange, (EXCHANGE_NAME, 'fanout'), True)
+        logging.info("Creating {} queues".format(queues_))
+        for i in xrange(0, queues_):
             queue_name = QUEUE_NAME.format(number=i)
             logging.debug("Creating the Queue {} and binding it".format(queue_name))
             AMQP_OPERATION(create_queue, (queue_name,), True)
-            AMQP_OPERATION(set_binding, (EXCHANGE_NAME, queue_name,), True)
+            AMQP_OPERATION(purge_queue, (queue_name,), True)
+            AMQP_OPERATION(set_binding, (EXCHANGE_NAME, queue_name, 'queue'), True)
 
-        # run the tests and collect the results
+        logging.info("Queues created")
         results = []
         for test in _installed_tests():
-            t = test(EXCHANGE_NAME, QUEUE_NAME, queues, messages)
+
+            # filter those test that haven't been given.
+            if tests_ and test not in tests_:
+                logging.debug("`{}` test filtered, skipping it".format(test))
+                continue
+
+            # Each instsance returns a list of sort of executions to evaluate each
+            # test sceanrio with different configurations. At leas each test runs 
+            # once time. Parameters are build using the queues and messaages parameters
+            # given to the constructor.
+            t = test(EXCHANGE_NAME, QUEUE_NAME, queues_, messages_)
             for parameters in t.parameters():
                 logging.info("{} running with params {}".format(test.NAME, parameters))
                 try:
                     t.setUp(**parameters)
-                    results.append((test.NAME, parameters) + t.run(**parameters))
+                    real, user, sys = t.run(**parameters)
+                    results.append(
+                        (test.NAME,
+                         parameters,
+                         real, user, sys,
+                         (messages_*queues_)/real))
                 except (Exception, TestFailed), e:
                     logging.warning("{} failed {}".format(test.NAME, str(e)))
                     logging.debug(traceback.format_exc())
@@ -112,7 +138,8 @@ def run(queues=QUEUES, messages=MESSAGES):
         # We have to remove the AMQP entities created before
         # event there was a exception.
         delete_exchange(EXCHANGE_NAME)
-        for i in xrange(0, queues):
+        for i in xrange(0, queues_):
             delete_queue(QUEUE_NAME.format(number=i))
+        logging.info('Removed exchanges and queues used by the tests')
 
     return results

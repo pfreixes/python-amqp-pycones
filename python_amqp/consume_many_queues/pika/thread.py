@@ -7,7 +7,10 @@ Consume Many Queues Pika Threading implementation
 import pika
 import threading
 
+from itertools import takewhile, izip, cycle
+
 from python_amqp.consume_many_queues.consume_many_queues_base import ConsumeManyQueuesBase
+from python_amqp.consume_many_queues.consume_many_queues_base import EXCHANGE_NAME, QUEUE_NAME
 
 
 class Consumer(threading.Thread):
@@ -29,17 +32,16 @@ class Consumer(threading.Thread):
     def _callback(self, channel, method, properties, message):
         self._channel.basic_ack(delivery_tag=method.delivery_tag)
         self._rx += 1
-
         # the amount of messages that this consumer should get
         # is the total amount of messages of the all queues
         # bind.
         if self._rx == (self._messages * self._queues):
             # when the stop consuming is called it stops the loop
             # and the run function is terminated and the thread
-            self.channel.stop_consuming()
+            self._channel.stop_consuming()
 
     def run(self):
-        self.channel.start_consuming()
+        self._channel.start_consuming()
 
 
 class Thread(ConsumeManyQueuesBase):
@@ -69,10 +71,10 @@ class Thread(ConsumeManyQueuesBase):
         """ Create all threads necessary to run the parametrized test. Each thread will stablish a
         connection and will bind on a set of queues.
         """
-        self._threads = [Consumer(messages=self.messages, number=i) for i in xrange(0, threads)]
+        self._threads = [Consumer(messages=self.messages) for i in xrange(0, threads)]
 
         # it spreads the queues over the consumers until they run out.
-        map(lambda thread, queue: thread.bind_queue(self.queue.format(queue)),
+        map(lambda tq: tq[0].add_queue(QUEUE_NAME.format(number=tq[1])),
             izip(cycle(self._threads), xrange(0, self.queues)))
 
     def test(self, threads=2):
