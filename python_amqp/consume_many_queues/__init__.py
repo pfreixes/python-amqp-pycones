@@ -15,6 +15,8 @@ common operations used by the tests.
 
 :moduleauthor: Pau Freixes, pfreixes@gmail.com
 """
+from time import sleep
+
 import os
 import logging
 import traceback
@@ -33,12 +35,22 @@ from python_amqp.consume_many_queues.consume_many_queues_base import TestFailed
 from python_amqp.consume_many_queues.consume_many_queues_base import EXCHANGE_NAME, QUEUE_NAME
 
 def _installed_tests():
-    return [PikaThread]
-    #return [PikaThread, PikaAsync]
+    return [PikaThread, PikaAsync]
+
+def _red_message(message):
+    # Used to print a message over the console using
+    # the red color. Usefull to notice that one test failed
+    return "\033[1;31m" + message + "\033[0m"
+
+
+def _green_message(message):
+    # Used to print a message over the console using
+    # the green color. Usefull to notice that one test was fine.
+    return "\033[1;32m" + message + "\033[0m"
 
 # Default test values, they can be override as a paramaters of the
 # run function to run them with different values.
-QUEUES = 500
+QUEUES = 100
 MESSAGES = 80
 
 def list():
@@ -71,8 +83,6 @@ def run(tests=None, queues=None, messages=None):
     :param queues: integer, defaults QUEUES. Runs the test using this amount of queues
     :param messages: integer, defaults MESSAGES. Runs the test using this amount of messages
     """
-    logging.info("Running tests")
-
     def AMQP_OPERATION(f, args, result):
         if f(*args) != result:
             raise Exception("{}({}) did not return {}".format(f.__name__,
@@ -83,8 +93,9 @@ def run(tests=None, queues=None, messages=None):
     messages_ = messages if messages else MESSAGES
     tests_ = tests
 
-    logging.info('Running the tests with {} messages over {} queues'.format(messages_,
-                                                                            queues_))
+    logging.info('Running the tests with {} messages and {} queues, total messages {}'.format(messages_,
+                                                                                              queues_,
+                                                                                              messages_*queues_))
 
     try:
         # create all AMQP entities and bind the queues. We
@@ -101,12 +112,14 @@ def run(tests=None, queues=None, messages=None):
             AMQP_OPERATION(set_binding, (EXCHANGE_NAME, queue_name, 'queue'), True)
 
         logging.info("Queues created")
+        logging.info("Running tests")
         results = []
         for test in _installed_tests():
 
+            logging.info("+ {} test".format(test.NAME))
             # filter those test that haven't been given.
-            if tests_ and test not in tests_:
-                logging.debug("`{}` test filtered, skipping it".format(test))
+            if tests_ and test.NAME not in tests_:
+                logging.info("- filtered".format(test.NAME))
                 continue
 
             # Each instsance returns a list of sort of executions to evaluate each
@@ -115,7 +128,7 @@ def run(tests=None, queues=None, messages=None):
             # given to the constructor.
             t = test(EXCHANGE_NAME, QUEUE_NAME, queues_, messages_)
             for parameters in t.parameters():
-                logging.info("{} running with params {}".format(test.NAME, parameters))
+                logging.info("- Running with params {}".format(parameters))
                 try:
                     t.setUp(**parameters)
                     real, user, sys = t.run(**parameters)
@@ -124,8 +137,9 @@ def run(tests=None, queues=None, messages=None):
                          parameters,
                          real, user, sys,
                          (messages_*queues_)/real))
+                    logging.info(_green_message("Finished"))
                 except (Exception, TestFailed), e:
-                    logging.warning("{} failed {}".format(test.NAME, str(e)))
+                    logging.warning(_red_message("Failed {}".format(str(e))))
                     logging.debug(traceback.format_exc())
                 finally:
                     # always call the tearDown method for the specific
@@ -133,13 +147,13 @@ def run(tests=None, queues=None, messages=None):
                     try:
                         t.tearDown(**parameters)
                     except Exception:
-                        logging.warning("{} tearDown failed".format(test.NAME))
+                        logging.warning(_red_message("tearDown failed"))
     finally:
         # We have to remove the AMQP entities created before
         # event there was a exception.
         delete_exchange(EXCHANGE_NAME)
         for i in xrange(0, queues_):
             delete_queue(QUEUE_NAME.format(number=i))
-        logging.info('Removed exchanges and queues used by the tests')
+        logging.info('Leaving all AMQP stuff cleaned, removed exchanges and queues used by the tests')
 
     return results

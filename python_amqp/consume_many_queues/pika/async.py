@@ -9,10 +9,14 @@ import pika
 from itertools import takewhile, izip, cycle
 
 from python_amqp.consume_many_queues.consume_many_queues_base import ConsumeManyQueuesBase
+from python_amqp.consume_many_queues.consume_many_queues_base import EXCHANGE_NAME, QUEUE_NAME
 
 
 class Consumer(object):
-    def __init__(self, ioloop, messages, end_consumers):
+    def __init__(self, ioloop, id_, messages, end_consumers):
+        self._consumer_id = id_
+        self._messages = messages
+        self._queue_names = []
         self._queues = 0
         self._rx = 0
         self._ioloop = ioloop
@@ -43,11 +47,14 @@ class Consumer(object):
     def on_channel_open(self, channel):
         self._channel = channel
         self._channel.add_on_close_callback(self.on_channel_closed)
-        self._channel.basic_qos(prefetch_size=0, prefetch_count=self._prefetch, all_channels=True)
+        self._channel.basic_qos(prefetch_size=0, prefetch_count=1, all_channels=True)
         self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
+        for queue in self._queue_names:
+            self._channel.basic_consume(self.on_message, queue)
 
     def add_queue(self, queue_name):
-        self._channel.basic_consume(self.on_message, queue_name)
+        # we can not bind the queue still because the channel is not available
+        self._queue_names.append(queue_name)
         self._queues += 1
 
     def on_consumer_cancelled(self, method_frame):
@@ -58,7 +65,8 @@ class Consumer(object):
         self._channel.basic_ack(basic_deliver.delivery_tag)
         self._rx += 1
         if self._rx == (self._messages * self._queues):
-            self._end_consumers[self._ident - 1] = True
+            self._end_consumers[self._consumer_id] = True
+            self._channel.close()
             if all(self._end_consumers):
                 self._ioloop.stop()
 
@@ -89,8 +97,12 @@ class Async(ConsumeManyQueuesBase):
     Queues are distributed between the different connections with proportionally,
     however when the number of queues and the number of threads are not divisibles
     by them self, the amount of queues by each connection will not the same.
+
+    Because of the architecture of the test the connection time take by each consumer
+    is also computed aside of the time used to consume the messages by them self. It can
+    decrease a bit the metrics of this implementation.
     """
-    NAME = "Pika Async"
+    NAME = "Pika_Async"
     DESCRIPTION = "Consume messages using N connections sharing the same ioloop"
 
     def parameters(self):
@@ -103,16 +115,19 @@ class Async(ConsumeManyQueuesBase):
         will bind on a set of queues.
         """
         self._ioloop = pika.adapters.select_connection.IOLoop()
+
+        # All consumers share the follwoing array, each time that ones consumer
+        # has finished its work checks if the other ones have finished their work, the
+        # last one will close the ioloop.
         self._consumers_finsihed = [False] * connections
-        self._consumers = [Consumer(ioloop, self.messages, self._consumers_finsihed)
+
+        self._consumers = [Consumer(self._ioloop, i, self.messages, self._consumers_finsihed)
                            for i in xrange(0, connections)]
 
         # it spreads the queues over the consumers until they run out.
-        map(lambda consumer, queue: consumer.bind_queue(self.queue.format(queue)),
+        map(lambda cq: cq[0].add_queue(QUEUE_NAME.format(number=cq[1])),
             izip(cycle(self._consumers), xrange(0, self.queues)))
 
     def test(self, connections=2):
-        """ Start the connections to consume all messaages """
-        raise NotImplemented()
-        map(lambda consumer: consumer.start(), self._consumers)
-        return map(lambda thread: thread.join(), self._threads)
+        """ Start the ioloop, connecte all consumers and then consume all messaages """
+        self._ioloop.start()

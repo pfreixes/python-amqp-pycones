@@ -56,11 +56,11 @@ def main():
         root.addHandler(logging.handlers.NullHandler())
     else:
         root.setLevel(logging.DEBUG if options.verbose else logging.INFO)
-        
+        logging.basicConfig(format='%(message)s')
         # configure also the requests and pika module logging to use the
-        # warning level.
-        logging.getLogger('requests').setLevel(logging.WARNING)
-        logging.getLogger('pika').setLevel(logging.WARNING)
+        # error level.
+        logging.getLogger('requests').setLevel(logging.ERROR)
+        logging.getLogger('pika').setLevel(logging.ERROR)
         
 
     if command == 'list':
@@ -82,7 +82,7 @@ def main():
                               help="Number of queues used. Default {}".format(QUEUES))
         run_options, run_args = run_parser.parse_args(args[1:])
 
-        results = run(tests=run_args[1:], queues=run_options.queues, messages=run_options.messages)
+        results = run(tests=run_args, queues=run_options.queues, messages=run_options.messages)
         print "+------------+-------------------------+---------+---------+---------+-------+"
         print "|Name        |Parameters               |     Real|     User|      Sys|  Msg/s|"
         print "+------------+-------------------------+---------+---------+---------+-------+"

@@ -59,7 +59,7 @@ class Thread(ConsumeManyQueuesBase):
     however when the number of queues and the number of threads are not divisibles
     by them self, the amount of queues by each thread will not the same.
     """
-    NAME = "Pika Threads"
+    NAME = "Pika_Threads"
     DESCRIPTION = "Each Thread runs a Pika bloking adpater, threads"
 
     def parameters(self):
