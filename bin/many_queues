@@ -42,6 +42,13 @@ def main():
                       help="Run with debug level")
     parser.add_option("-q", action="store_true", default=False, dest="quiet",
                       help="Run without logging ")
+    parser.add_option("--messages", type="int", default=None,
+                      dest="messages",
+                      help="Number of messages published. Default {}".format(MESSAGES))
+    parser.add_option("--queues", type="int", default=None,
+                      dest="queues",
+                      help="Number of queues used. Default {}".format(QUEUES))
+
     options, args = parser.parse_args()
 
     try:
@@ -69,26 +76,17 @@ def main():
         try:
             test_name = args[1]
         except IndexError:
-            print "info command needs as argument a test name"
+            print "info command needs as an argument a test name"
             sys.exit(-1)
         print info(test_name)
     elif command == 'run':
-        run_parser = OptionParser()
-        run_parser.add_option("--messages", type="int", default=None,
-                              dest="messages",
-                              help="Number of messages published. Default {}".format(MESSAGES))
-        run_parser.add_option("--queues", type="int", default=None,
-                              dest="queues",
-                              help="Number of queues used. Default {}".format(QUEUES))
-        run_options, run_args = run_parser.parse_args(args[1:])
-
-        results = run(tests=run_args, queues=run_options.queues, messages=run_options.messages)
+        results = run(tests=args[1:], queues=options.queues, messages=options.messages)
         print "+------------+-------------------------+---------+---------+---------+-------+"
         print "|Name        |Parameters               |     Real|     User|      Sys|  Msg/s|"
         print "+------------+-------------------------+---------+---------+---------+-------+"
         for result in results:
             name, parameters, real, user, sys_, msgs_second = result
-            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(11), str(parameters).ljust(25), real, user, sys_, msgs_second)
+            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(12), str(parameters).ljust(25), real, user, sys_, msgs_second)
         
         print "+-----------+-------------------------+---------+---------+---------+--------+"
     else:
