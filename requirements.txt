@@ -3,3 +3,4 @@ python-times
 pytest
 mock
 requests
+rst2slides
