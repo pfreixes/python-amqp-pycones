@@ -17,7 +17,6 @@ class Consumer(object):
         self._consumer_id = id_
         self._messages = messages
         self._queue_names = []
-        self._queues = 0
         self._rx = 0
         self._ioloop = ioloop
         self._end_consumers = end_consumers
@@ -34,8 +33,7 @@ class Consumer(object):
         self._connection.close()
 
     def on_connection_closed(self, connection, reply_code, reply_text):
-        self._channel = None
-        self._connection.ioloop.stop()
+        pass
 
     def on_connection_open(self, unused_connection):
         self._connection.add_on_close_callback(self.on_connection_closed)
@@ -55,7 +53,6 @@ class Consumer(object):
     def add_queue(self, queue_name):
         # we can not bind the queue still because the channel is not available
         self._queue_names.append(queue_name)
-        self._queues += 1
 
     def on_consumer_cancelled(self, method_frame):
         if self._channel:
@@ -64,9 +61,12 @@ class Consumer(object):
     def on_message(self, _, basic_deliver, properties, message):
         self._channel.basic_ack(basic_deliver.delivery_tag)
         self._rx += 1
-        if self._rx == (self._messages * self._queues):
+        if self._rx == (self._messages * len(self._queue_names)):
+            # we managed all the messages expected, just mark it
+            # and ask if there is still other consumers to finish
             self._end_consumers[self._consumer_id] = True
             self._channel.close()
+            self._connection.close()
             if all(self._end_consumers):
                 self._ioloop.stop()
 
@@ -131,3 +131,4 @@ class Async(ConsumeManyQueuesBase):
     def test(self, connections=2):
         """ Start the ioloop, connecte all consumers and then consume all messaages """
         self._ioloop.start()
+

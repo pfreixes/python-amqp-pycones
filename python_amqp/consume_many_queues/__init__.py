@@ -50,8 +50,8 @@ def _green_message(message):
 
 # Default test values, they can be override as a paramaters of the
 # run function to run them with different values.
-QUEUES = 100
-MESSAGES = 80
+QUEUES = 200
+MESSAGES = 50
 
 def list():
     """
