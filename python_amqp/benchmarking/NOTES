@@ -1,0 +1,72 @@
+Prefetch count -> connexio io-bound
+localhost connection bound at ~ 170m/s
+
+librabbitmq
+    * Publish 1 process 1 exchange 1 queue 25.000m/s
+    * Publish 2 processes 1 exchange 1 queue 33.000m/s
+    * Task = 5ms => upper-bound at ~ 200m/s (actually 186m/s because overhead)
+
+    * Consume 1 process 1 thread 1 connection 1 channel 1 consumer prefetch=1, 5ms/task => 170m/s (io-bound)
+    * Consume 1 process 1 thread 1 connection 1 channel 1 consumer prefetch>=2, 5ms/task => 186m/s (task-bound) (7% penalty)
+    * Consume 2 process 1 thread 1 connection 1 channel 1 consumer => Same as above
+    * ThreadPool N/A
+    * n channels n threads N/A
+    * 11 MB RAM 1 consumer
+    * n connections n threads:
+        * 2 Threads => 190m/s
+        * 200 Threads prefetch=2 ~> 10.000m/s (50m/s/thread/connection vs 190m/s/thread/connection) (Switch-bound)
+        * Optimal: 50 Threads/connections prefetch=2000 ~> 9.700m/s, 150m/s
+        * Full performance: 100 Threads/connections prefetch=2000/consumer ~> 15.000m/s 
+        * 200 Threads/connections: 90MB RAM Python
+        * 100 Threads/connections: 50MB RAM Python
+        * But...
+        * 100 Connections == 250 MB RAM in RabbitMQ
+        * 1 Connection == 2,5 MB RAM / 1 Channel == ?? (32 B?)
+
+    * 1 connection 1 thread n worker processes:
+        * 4 workers: 744m/s (186m/s/worker) 44MB RAM (+10 MB RAM)
+        * Throughput like 100 threads: 60 workers, 660MB RAM (+ 150 MB RAM)
+
+
+    * No-task: 21.000m/s 1 worker 1 connection 1 thread prefetch>100 (queue/eprocess-bound)
+    * No-task: 7.000m/s 1 worker 1 connection 1 thread prefetch=1 
+
+    * 186m/s 1 consumer
+
+
+rabbitpy
+    * Base RAM 12MB
+    * Consume 1 process 1 thread 1 connection 1 channel 1 prefetch=1 no-task -> 750m/s
+    * Consume 1 process 1 thread 1 connection 1 channel 1 prefetch=1 5ms/task -> 150m/s (25% penalty)
+    * Consume 1 process 1 thread 1 connection 1 channel 1 prefetch=2 5ms/task -> 182m/s (9% penalty)
+    * Consume 1 process 1 thread 1 connection 1 channel 1 prefetch=200 5ms/task -> 182m/s (9% penalty)
+
+    * Consume 1 process 1 threads 50 connection 1 channel 1 prefetch=1 5ms/task -> 130m/s (prefetch+switch penalty)
+    * Consume 1 process 1 threads 50 connection 1 channel 1 prefetch=100 5ms/task -> 1.820m/s
+    * Consume 1 process 1 threads 50 connection 1 channel 1 prefetch=10.000 5ms/task -> 1.920m/s (task-bound)
+    * Consume 1 process 1 threads 100 connection 1 channel 1 prefetch=100 5ms/task -> 1.880m/s
+
+    * Consumer 50 process 1 threads 50 connection 1 channels 50 prefetch=1/consumer 5m/s -> 2.088m/s
+    * Consumer 50 process 1 threads 50 connection 1 channels 50 prefetch=2/consumer 5m/s -> 2.250m/s
+    * Consumer 100 process 1 threads 100 connection 1 channels 100 prefetch=2/consumer 5m/s -> 2.250m/s (latency-bound)
+    * Consumer 50 process 1 threads 50 connection 1 channels 50 prefetch=100/consumer 5m/s -> 2.850m/s
+    * Consumer 30 process 1 threads 30 connection 1 channels 30 prefetch=200/consumer 5m/s -> 2.850m/s 18MB RAM
+    * Consumer 100 process 1 threads 100 connection 1 channels 100 prefetch=200/consumer 5m/s -> 2.850m/s (channel-bound)  
+        
+    * n connections n threads:
+        * 50 threads/connections prefetch=1/channel => 1.500m/s
+        * 50 threads/connection prefetch=2/channel => 1.600m/s
+        * 50 threads/connection prefetch=200/channel => 1.900m/s
+        * 30 threads/connection prefetch=200/channel => 1.900m/s 25MB RAM (+75MB connections)
+        * 100 threads/connection prefetch=200/channel => 1.650m/s
+
+
+pyamqp
+    * 1-1-1-1-1 177m/s 10,5MB RAM
+    * n connections n threads:
+        * 20 Threads/connections (200.000 prefetch) => 3.600m/s
+        * 100 Threads/connections (200.000 prefetch) => 4.400m/s
+
+
+RabbitMQ
+    * Empty Queue: 21KB
