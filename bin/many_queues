@@ -81,14 +81,14 @@ def main():
         print info(test_name)
     elif command == 'run':
         results = run(tests=args[1:], queues=options.queues, messages=options.messages)
-        print "+------------+-------------------------+---------+---------+---------+-------+"
-        print "|Name        |Parameters               |     Real|     User|      Sys|  Msg/s|"
-        print "+------------+-------------------------+---------+---------+---------+-------+"
+        print "+-------------------+-------------------------+---------+---------+---------+-------+"
+        print "|Name               |Parameters               |     Real|     User|      Sys|  Msg/s|"
+        print "+-------------------+-------------------------+---------+---------+---------+-------+"
         for result in results:
             name, parameters, real, user, sys_, msgs_second = result
-            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(12), str(parameters).ljust(25), real, user, sys_, msgs_second)
+            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(19), str(parameters).ljust(25), real, user, sys_, msgs_second)
         
-        print "+-----------+-------------------------+---------+---------+---------+--------+"
+        print "+------------------+-------------------------+---------+---------+---------+--------+"
     else:
         print "Command `{}` not supported".format(command)
         sys.exit(-1)
