@@ -8,6 +8,7 @@ get info about each implementation.
 """
 
 import sys
+import click
 import logging
 
 from optparse import OptionParser
@@ -35,65 +36,59 @@ usage: many_queues [global options] <comand> [command options] arg1 arg2
              --messages <num messagess used> --queues <num queues used>
 """
 
-
-def main():
-    parser = OptionParser(usage=USAGE)
-    parser.add_option("-v", action="store_true", default=False, dest="verbose",
-                      help="Run with debug level")
-    parser.add_option("-q", action="store_true", default=False, dest="quiet",
-                      help="Run without logging ")
-    parser.add_option("--messages", type="int", default=None,
-                      dest="messages",
-                      help="Number of messages published. Default {}".format(MESSAGES))
-    parser.add_option("--queues", type="int", default=None,
-                      dest="queues",
-                      help="Number of queues used. Default {}".format(QUEUES))
-
-    options, args = parser.parse_args()
-
-    try:
-        command = args[0]
-    except IndexError:
-        parser.print_usage()
-        sys.exit(-1)
+@click.group()
+@click.option('-v', is_flag=True, help='Run in verbose mode')
+@click.option('-q', is_flag=True, help='Run silenced, just print the results')
+def many_queues(v, q):
+    # just leave ready the logger settings considering
+    # it has to be configured to run in verbose mode, or
+    # to run just in quite mode.
 
     root = logging.getLogger()
-
-    if options.quiet:
+    if q:
         root.addHandler(logging.handlers.NullHandler())
     else:
-        root.setLevel(logging.DEBUG if options.verbose else logging.INFO)
+        root.setLevel(logging.DEBUG if v else logging.INFO)
         logging.basicConfig(format='%(message)s')
-        # configure also the requests and pika module logging to use the
-        # error level.
+
+        # Set the logging level of requests and pika package
+        # in ERROR level.
         logging.getLogger('requests').setLevel(logging.ERROR)
         logging.getLogger('pika').setLevel(logging.ERROR)
-        
 
-    if command == 'list':
-        print '\n'.join(list_tests())
-    elif command == 'info':
-        try:
-            test_name = args[1]
-        except IndexError:
-            print "info command needs as an argument a test name"
-            sys.exit(-1)
-        print info(test_name)
-    elif command == 'run':
-        results = run(tests=args[1:], queues=options.queues, messages=options.messages)
-        print "+-------------------+-------------------------+---------+---------+---------+-------+"
-        print "|Name               |Parameters               |     Real|     User|      Sys|  Msg/s|"
-        print "+-------------------+-------------------------+---------+---------+---------+-------+"
-        for result in results:
-            name, parameters, real, user, sys_, msgs_second = result
-            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(19), str(parameters).ljust(25), real, user, sys_, msgs_second)
-        
-        print "+------------------+-------------------------+---------+---------+---------+--------+"
-    else:
-        print "Command `{}` not supported".format(command)
-        sys.exit(-1)
-        
+@many_queues.command('list',
+                   help='Get a list of the implemented tests with the key name plus the short description')
+def cmd_list():
+    print '\n'.join(list_tests())
+
+
+@many_queues.command('info', help='Get a detail info of an implemented test')
+@click.argument('test_name')
+def cmd_info(test_name):
+    print info(test_name)
+    
+
+@many_queues.command('run',
+                   help='Runs all tests. Filter by name passing them as arguments')
+@click.option('--queues', default=QUEUES,
+              type=int,
+              help='Run the tests using this amount of queues. Default {}'.format(QUEUES))
+@click.option('--messages', default=MESSAGES,
+              type=int,
+              help='Publish this amount of messsages to each queue. Default {}'.format(MESSAGES))
+@click.argument('test_name', nargs=-1)
+def cmd_run(queues, messages, test_name):
+    # test_name is a tuple containing a names of tests, or when there is no 
+    # arguments it is a empty tuple.
+    results = run(tests=test_name, queues=queues, messages=messages)
+    print "+-------------------+-------------------------+---------+---------+---------+-------+"
+    print "|Name               |Parameters               |     Real|     User|      Sys|  Msg/s|"
+    print "+-------------------+-------------------------+---------+---------+---------+-------+"
+    for result in results:
+        name, parameters, real, user, sys_, msgs_second = result
+        print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(19), str(parameters).ljust(25), real, user, sys_, msgs_second)
+    print "+------------------+-------------------------+---------+---------+---------+--------+"
 
 
 if __name__ == "__main__":
-    main()
+    many_queues()
