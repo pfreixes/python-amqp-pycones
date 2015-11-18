@@ -85,10 +85,12 @@ Bottleneck points
 
 The following list are a set of rules to consider about resource contention and bottlenecks that are usually faced when implementing AMQP architectures:
 
-* Rule 1 ...
-* Rule 2 ....
+* Latence between the Queue and the Consumer. Increase the QoS of the Consumer.
+* Message contention because of the FIFO Queue. Spread messages to many queues and consume from them using an almost fairness algorithm.
+* Consumer throughput. Scale vertical using concurrence and/or parallelism and/or scale horizontal using RabbitMQ clustering.
+* Queue Binding is by it self expensive. Use Exchange two Exchange in dynamic subscribe and unsubscribe environments.
+* Consume of memory by queues, exchanges, connections and channels.
 * And *Python* by it self.
-
 
 Celery
 ======
