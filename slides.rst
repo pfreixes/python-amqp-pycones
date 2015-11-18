@@ -7,12 +7,12 @@ AMQP from Python, advanced design patterns
 * MIIMETIQ is a framework for IoT that uses Python and the following technologies:
 
   * **Pika**, **Celery**, Flask, Twisted, Tornado, Eve
-  * **Rabbitmq**, Mongodb, uwsgi, nginx
+  * **Rabbitmq**, MongoDB, Graphite, uWSGI, NGINX
   * Ansible
   * PyTest
   * and so on
 
-* This talk is just a good selection of two years using AMQP with Python.
+* This talk is just a good selection of two years of experience using AMQP with Python.
 * We will try to move our audience from the basics of AMQP with Python to something called *advanced* 
 * The whole talk and code used can be *forked* from git https://github.com/pfreixes/python-amqp-pycones
 
@@ -23,19 +23,19 @@ Basics of AMQP
 ===============
 
 * The Advanced Message Queuing Protocol (AMQP) is an open standard application layer protocol for message-oriented middleware
-* Stable specification *1.0* but nobdy uses it, everyone continues on *0.9* specification. Dont ask please.
-* One of the most succesfull, and open source, implementation is `RabbitMQ`_. 
+* An stable specification *1.0* is available but nobody uses it, everyone continues on *0.9* specification. Don't ask please.
+* One of the most succesful, and open source implementation is `RabbitMQ`_. 
 
 .. image:: static/rabbitmq.png
 
-* Basics concepts of AMQP are: *queues*, *consumers*, *publishers*, *exhcanges*, *topics*.
-* Basics implementations using previous concepts is just a publish-subscribe pattern 
+* Basics concepts of AMQP are: *queues*, *consumers*, *publishers*, *exhcanges*, *bindings*.
+* Basics implementations using previous concepts are just a publish-subscribe pattern 
 
 .. image:: static/publisher-consumer-basic.png
 
 
-But AMQP is a specification that allow us to build different architectures to model our bussines logic in a decoupled way
-getting the adventages of the protocol specification.
+But AMQP is an specification that allows us to build different architectures to model our business logic in a decoupled way
+getting the advantages of the protocol specification.
 
 
 .. _RabbitMQ: https://www.rabbitmq.com/
@@ -43,14 +43,16 @@ getting the adventages of the protocol specification.
 Python meet AMQP
 ================
 
-Python has a mature and a wide ecosystem of drivers that implement the AMQP protocol to be used your Python code.
-Some of them and its main charateristics are:
+Python has a mature and a wide ecosystem of drivers that implement the AMQP protocol.
+Some of them and its main characteristics are:
 
-* `Celery`_ Distributed Task Queue that was initially implemented over AMQP to then become a *bloatware* sofware. Other pieces of sofware such as **librabbitmq**, **kombu** born thanks to Celery and by the same author `Ask`_
-* `Pika`_ implemets both asyncronour and syncronous pattern. Luckly several people has continued its development. 
-* `txAMQP`_ driver for Twisted. Asycronous pattern.
-* `rabbitpy`_ the new kid of `Gavin M Roy`_. He launches it as a main developer of *Pika* may be exhausted with the multi pattern compatibility of Pika.
-* *librabbitmq*, *amqp-lib*, *pyamqp*
+* `Celery`_ Distributed Task Queue with steroids.  Was initially implemented only over AMQP but became a *bloated* software. Other pieces of software such as **librabbitmq** or **kombu** were born thanks to Celery and by the same author `Ask`_
+* `Pika`_ Implements both asynchronous and synchronous pattern. Luckily several people has continued its development. 
+* `txAMQP`_ Driver for Twisted. Asynchronous pattern.
+* `rabbitpy`_ The new kid of `Gavin M Roy`_. He launches it as a main developer of *Pika* may be exhausted with the multi pattern compatibility of Pika. Only thread-safe implementation.
+* `py-amqplib`_ Implementation of the 0.8 specification. Currently not being developed.
+* `py-amqp`_ Fork from py-amqplib, created by `Ask`_ and the Celery project.
+* `librabbitmq`_ Python bindings to rabbitmq-c, created by `Ask`_ and the Celery project.
 
 .. _Celery : https://github.com/celery/celery
 .. _Pika : https://github.com/pika/pika
@@ -58,6 +60,8 @@ Some of them and its main charateristics are:
 .. _txAMQP : https://pypi.python.org/pypi/txAMQP
 .. _Gavin M Roy : https://github.com/gmr
 .. _librabbitmq : https://github.com/celery/librabbitmq
+.. _py-amqp : https://github.com/celery/py-amqp
+.. _py-amqplib : https://github.com/barryp/py-amqplib
 .. _Ask : https://github.com/ask
 
 
@@ -66,17 +70,16 @@ Example of a complex AMQP architecture
 
 The following image displays a complex AMQP architecture that implements the next features:
 
-* Decouple itensive and CPU bound operations from the Flask code to isolated consumers
-* Route the messages published by Devices to the DB applying Authentication, Authoritzation and fair scheduling.
-* Notice users looged into the system about new messages such as Device messages in real time.
+* Decouple intensive and CPU bound operations from the Flask code to isolated consumers
+* Route the messages published by Devices to the DB applying Authentication, Authorization and fair scheduling.
+* Notice users logged into the system about new events such as Device messages in real time.
 
 **PUTT HERE THE IMAGE**
 
 Bottleneck points
 =================
 
-The following list are a set of rules to consider about resource contention and bootlenecks that can
-apeear implementing AMQP architectures
+The following list are a set of rules to consider about resource contention and bottlenecks that are usually faced when implementing AMQP architectures:
 
 * Rule 1 ...
 * Rule 2 ....
