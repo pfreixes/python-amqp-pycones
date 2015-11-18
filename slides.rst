@@ -74,7 +74,11 @@ The following image displays a complex AMQP architecture that implements the nex
 * Route the messages published by Devices to the DB applying Authentication, Authorization and fair scheduling.
 * Notice users logged into the system about new events such as Device messages in real time.
 
-**PUTT HERE THE IMAGE**
+Example of a complex AMQP architecture
+======================================
+
+.. image:: static/advanced-topology__VGA.png 
+
 
 Bottleneck points
 =================
@@ -87,7 +91,7 @@ The following list are a set of rules to consider about resource contention and 
 
 
 Celery
-===============
+======
 
 bar
 
