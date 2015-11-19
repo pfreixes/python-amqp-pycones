@@ -46,7 +46,7 @@ def many_queues(v, q):
 
     root = logging.getLogger()
     if q:
-        root.addHandler(logging.handlers.NullHandler())
+        root.addHandler(logging.NullHandler())
     else:
         root.setLevel(logging.DEBUG if v else logging.INFO)
         logging.basicConfig(format='%(message)s')
@@ -81,6 +81,12 @@ def cmd_run(queues, messages, test_name):
     # test_name is a tuple containing a names of tests, or when there is no 
     # arguments it is a empty tuple.
     results = run(tests=test_name, queues=queues, messages=messages)
+
+    # reorder the tests giving the most faster at the top of the list,
+    # each result is composed by the attr name, real, user, sys, msg/sec
+    # we use the last one to order.
+    results.sort(key=lambda result: result[-1])
+
     print "+-------------------+-------------------------+---------+---------+---------+-------+"
     print "|Name               |Parameters               |     Real|     User|      Sys|  Msg/s|"
     print "+-------------------+-------------------------+---------+---------+---------+-------+"
