@@ -281,19 +281,63 @@ We implemented a *Pika Asyncronous* that tries with different QoS value, getting
 
 .. _ack : https://www.rabbitmq.com/confirms.html
 
-Fair scheduling : Pika vs Rabbitpy vs Kombu
-============================================
-
 Fair scheduling : Pika vs Librabbitmq, Python is so slow
 ========================================================
 
-But sometimes we forget how slow can Python be. The following graphic shows the performance difference between the **Librabbitmq** library
-and the **Pika** implementations.
+But sometimes we forget how slow can Python be. The following table shows the performance difference between the **Librabbitmq** library
+and the best numbers got by the different **Pika** implementations.
 
-.. image:: static/many_queues_with_librabbitmq.png
+.. code:: bash
 
-most of **Librabbitmq** is written using the *C* language, so the code executed by the Consumer that is handled by the interpreter
+    +-------------------+---+-----+------------+ 
+    | Implementation    | C | QoS | Msg/Second | 
+    +===================+===+=====+============+ 
+    | Pika Threads      | 64|    1|        4032| 
+    +-------------------+---+-----+------------+
+    | Pika Async, 64    | 64|    1|        7092| 
+    +-------------------+---+-----+------------+
+    | Pika QoS, 64 8    |  8|   64|       16129| 
+    +-------------------+---+-----+------------+
+    | Librabbitmq       |  4|    1|       38461| 
+    +-------------------+---+-----+------------+
+
+
+Most of **Librabbitmq** is written using the *C* language, so the code executed by the Consumer that is handled by the interpreter
 is just the consumer callback.
+
+Fair scheduling : All results together, Python is so so so slow
+===============================================================
+
+.. code:: bash
+
+    +-------------------+-------------------------+---------+---------+---------+-------+
+    |Name               |Parameters               |     Real|     User|      Sys|  Msg/s|
+    +-------------------+-------------------------+---------+---------+---------+-------+
+    |Pika_Async         |{'connections': 2}       |     9.93|     2.36|     0.20|   1007|
+    |Pika_Threads       |{'connections': 2}       |     9.82|     2.96|     0.25|   1018|
+    |Pika_Threads       |{'connections': 4}       |     5.17|     2.72|     0.28|   1934|
+    |Pika_Async         |{'connections': 4}       |     4.69|     1.92|     0.14|   2132|
+    |Pika_Threads       |{'connections': 8}       |     3.30|     2.51|     0.44|   3030|
+    |Pika_Threads       |{'connections': 16}      |     2.95|     2.26|     0.49|   3389|
+    |Pika_Async         |{'connections': 8}       |     2.73|     1.67|     0.15|   3663|
+    |Pika_Threads       |{'connections': 32}      |     2.65|     2.32|     0.53|   3773|
+    |Pika_Threads       |{'connections': 64}      |     2.48|     2.32|     0.68|   4032|
+    |Pika_Async         |{'connections': 16}      |     1.84|     1.52|     0.11|   5434|
+    |Pika_Async         |{'connections': 32}      |     1.64|     1.39|     0.10|   6097|
+    |Pika_Async         |{'connections': 64}      |     1.41|     1.20|     0.11|   7092|
+    |Pika_Async_QoS     |{'prefetch': 4}          |     1.16|     1.04|     0.03|   8620|
+    |Pika_Async_QoS     |{'prefetch': 8}          |     0.97|     0.77|     0.03|  10309|
+    |Pika_Async_QoS     |{'prefetch': 16}         |     0.70|     0.66|     0.00|  14285|
+    |Pika_Async_QoS     |{'prefetch': 32}         |     0.63|     0.62|     0.00|  15873|
+    |Pika_Async_QoS     |{'prefetch': 64}         |     0.62|     0.60|     0.01|  16129|
+    |Librabbitmq_Threads|{'connections': 64}      |     0.41|     0.17|     0.10|  24390|
+    |Librabbitmq_Threads|{'connections': 32}      |     0.32|     0.14|     0.08|  31250|
+    |Librabbitmq_Threads|{'connections': 16}      |     0.29|     0.10|     0.10|  34482|
+    |Librabbitmq_Threads|{'connections': 2}       |     0.27|     0.09|     0.05|  37037|
+    |Librabbitmq_Threads|{'connections': 8}       |     0.27|     0.10|     0.08|  37037|
+    |Librabbitmq_Threads|{'connections': 4}       |     0.26|     0.09|     0.06|  38461|
+    +------------------+-------------------------+---------+---------+---------+--------+
+
 
 conclusions
 ===========
