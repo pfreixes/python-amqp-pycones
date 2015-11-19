@@ -111,8 +111,165 @@ there are.
 
 .. image:: static/fair_queue_consuming.png
 
-Fair scheduling 
-===============
+Fair scheduling : Considering the throughput
+============================================
+
+As we saw before at `Bottleneck points`_ slides, there are a set of points that have to be considered to improve the Consumer throughput, definitely
+process of massges as fast we can. The make that we will implement the following charastericics using the **Pika** driver.
+
+* Scale verticaly of the Consumer using concurrence or parallelism.
+  
+  * Which is the best cardinality between queues N and consumers M ? How perform the diferent N:M cardinality?
+  * Which is the best pattern to implement the mulitple consumers pardigm ? Concurrence or Parallelism?
+
+* Reducing the lantence between the Queue and the Consumer increasing the QoS.
+
+  * Wich is the best QoS ?
+
+
+Fair scheduling : Pika parallelism
+==================================
+
+Pika implements a Blocking Adapter with a kind and easy interface to implement Consumers. The following code shows an example
+that launches N connections - one per thread - and wait until all messages have been consumed.
+
+.. code-block:: python
+
+    MESSAGES = 100
+    QUEUES = 50
+    CONNECTIONS = 32
+
+    class Consumer(threading.Thread):
+        def __init__(self, *args, **kwargs):
+            self._queues = 0
+            self._connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+            self._channel = self._connection.channel()
+            self._channel.basic_qos(prefetch_size=0, prefetch_count=1, all_channels=True)
+            threading.Thread.__init__(self, *args, **kwargs)
+
+        def add_queue(self, queue):
+            self._queues += 1
+            self._channel.basic_consume(self._callback, queue=queue)
+
+        def _callback(self, channel, method, properties, message):
+            self._channel.basic_ack(delivery_tag=method.delivery_tag)
+            self._rx += 1
+            if self._rx == (MESSAGES * self._queues):
+                self._channel.stop_consuming()
+
+        def run(self):
+            self._channel.start_consuming()
+
+    threads = [Consumer() for i in xrange(0,  CONNECTIONS)]
+    map(lambda tq: tq[0].add_queue('queue_{}'.format(tq[1])), izip(cycle(threads), xrange(0, QUEUES)))
+    map(lambda thread: thread.start(), threads)
+    map(lambda thread: thread.join(), threads)
+
+
+Fair scheduling : Pika concurrence
+==================================
+
+Pika implements an Asyncronoous Adapter with a callback pattern to implements Consumers . The following code shows an example
+that launches N connections sharing the same ioloop and wait until all messages have been consumed.
+
+.. code-block:: python
+
+    MESSAGES = 100
+    QUEUES = 50
+    CONNECTIONS = 32
+
+    ioloop = pika.adapters.select_connection.IOLoop()
+    consumers_finsihed = [False] * CONNECTIONS
+
+    class Consumer(object):
+        def __init__(self, id_):
+            self._id = id_
+            self._connection = pika.SelectConnection(
+                pika.ConnectionParameters(host='localhost', socket_timeout=1000),
+                self.on_connection_open, custom_ioloop=ioloop, stop_ioloop_on_close=False)
+
+        def on_connection_open(self, unused_connection):
+            self._connection.add_on_close_callback(self.on_connection_closed)
+            self._connection.channel(on_open_callback=self.on_channel_open)
+
+        def on_channel_open(self, channel):
+            self._channel = channel
+            self._channel.add_on_close_callback(self.on_channel_closed)
+            self._channel.basic_qos(prefetch_size=0, prefetch_count=1, all_channels=True)
+            self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
+            for queue in self._queue_names:
+                self._channel.basic_consume(self.on_message, queue)
+
+
+Fair scheduling : Pika concurrence
+==================================
+
+.. code-block:: python
+
+        def add_queue(self, queue_name):
+            self._queue_names.append(queue_name)
+
+        def on_message(self, basic_deliver, properties, message):
+            self._channel.basic_ack(basic_deliver.delivery_tag)
+            self._rx += 1
+            if self._rx == (MESSAGES * len(self._queue_names)):
+                consumers_finished[self._id] = True
+                if all(consumers_finished):
+                    ioloop.stop()
+
+    consumers = [Consumer(i) for i in xrange(0,  CONNECTIONS)]
+    map(lambda tq: tq[0].add_queue('queue_{}'.format(tq[1])), izip(cycle(consumers), xrange(0, QUEUES)))
+    ioloop.start()
+
+
+
+Fair scheduling : Concurrence vs Parallelism
+============================================
+
+Somebody believes that in short latence environments, threading patterns performs better than asyncronous patterns even with
+the Python GIL drawback. **Does anybody guess which reason there is behind this sentence ?**
+
+Fair scheduling : Concurrence vs Parallelism
+============================================
+
+**Yes** context switching *could* be faster than run a bunch of thousand Python opcode running an asynronous framework such as
+*Pika asyncronous adapter*, *Twisted* or *Tornado*.
+
+The following snippet belongs to the `Select Module`_ implemented by Python that wraps the well knowed *select* syscall, each
+time that one *I/O* operation is performed the *GIL* is relesed, *GIL* wouldn't perturbe your multi thread Python code if It 
+runs short tasks between many *I/O* operations.
+
+.. _Select Module: https://github.com/python/cpython/blob/master/Modules/selectmodule.c#L178
+
+.. code:: cpp
+
+    static PyObject * select_select(PyObject *self, PyObject *args)
+    {
+        .......
+
+        Py_BEGIN_ALLOW_THREADS
+        n = select(max, &ifdset, &ofdset, &efdset, tvp);
+        Py_END_ALLOW_THREADS
+
+        ....
+    }
+
+Fair scheduling : Concurrence vs Parallelism
+============================================
+
+The following graph displays the behaviour of the Asyncronoys and Threading Pika implementation consuming 5K messages
+from 100 queues using 2, 4, 8, 16 and 32 connections.
+
+.. image:: static/many_queues_without_librabbitmq.png
+
+Fair scheduling : Pika concurrence with QoS > 1
+===============================================
+
+Fair scheduling : Pika vs Rabbitpy vs Kombu
+============================================
+
+Fair scheduling : Pika vs Librabbitmq, Python is so slow
+========================================================
 
 But sometimes we forgot how slow can being Python, the following graphic shows the performance difference between the **Librabbitmq** library
 and the **Pika** implementations.
