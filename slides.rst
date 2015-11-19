@@ -100,7 +100,16 @@ bar
 Fair scheduling
 ===============
 
-put graphic here
+... or fair Consuming. The following graphic shows a scenario with many publishers sending messages to one exchange that has bound
+a queue that sends messages to one Consumer. 
+
+.. image:: static/unfair_queue_consuming.png
+
+Can we **grantee** that all messages has the same **chance** to be **consumed** at some specific time? We can't, but should we do? Yes, we should.
+The following graphic shows a new architecture that gives as a architecture to implement a fair scheduling using as many queues as many publishers
+there are.
+
+.. image:: static/fair_queue_consuming.png
 
 Fair scheduling 
 ===============
