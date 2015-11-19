@@ -7,3 +7,4 @@ Consume Many Queues Pika implementations
 
 from python_amqp.consume_many_queues.pika.thread import Thread
 from python_amqp.consume_many_queues.pika.async import Async
+from python_amqp.consume_many_queues.pika.async_qos import AsyncQoS

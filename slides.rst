@@ -222,8 +222,6 @@ Fair scheduling : Pika concurrence
     consumers = [Consumer(i) for i in xrange(0,  CONNECTIONS)]
     map(lambda tq: tq[0].add_queue('queue_{}'.format(tq[1])), izip(cycle(consumers), xrange(0, QUEUES)))
     ioloop.start()
-,
-
 
 Fair scheduling : Concurrence vs Parallelism
 ============================================
@@ -268,6 +266,20 @@ from 100 queues using 2, 4, 8, 16 and 32 connections.
 
 Fair scheduling : Pika concurrence with QoS > 1
 ===============================================
+
+Another way to increment the throughput of the worker is try to reduce the latence between the Consumer and the Broker, AMQP specifies a field
+called QoS that represents the number of messages that the Broker can send publish without get one ack. The QoS used by one Consumer is always
+by default 1.
+
+If the Consumer decides to use a channel with a QoS value greater than 1 the buffers belonging to the Operating System could store messages that
+have not been consumed still incrementing as a side effect the memory consumption. Once the Consumer decides to `ack`_ one message it can use the 
+multiple flag confirming automatically all previous messages.
+
+We implemented a *Pika Asyncronous* that tries with different QoS value, getting the following results:
+
+.. image:: static/many_queues_qos.png
+
+.. _ack : https://www.rabbitmq.com/confirms.html
 
 Fair scheduling : Pika vs Rabbitpy vs Kombu
 ============================================
