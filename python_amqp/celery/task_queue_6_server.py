@@ -60,8 +60,8 @@ def logout():
 @app.route('/expensive-task/<task_name>', methods=['POST'])
 def execute_expensive_task(task_name):
     session_token = request.headers['Session-Token']
-    task_result = expensive_task.apply_async(args=[task_name],
-                                             queue='expensive-{}'.format(session_token))
+    queue_name = 'expensive-{}'.format(session_token)
+    task_result = expensive_task.apply_async(args=[task_name], queue=queue_name)
     print 'Task executed. Session id:', task_result.id
     return task_result.id
 
@@ -79,8 +79,9 @@ def get_expensive_task(task_id):
 @app.route('/fast-task/<task_name>', methods=['POST'])
 def execute_fast_task(task_name):
     session_token = request.headers['Session-Token']
+    queue_name = 'fast-{}'.format(session_token)
     task_result = fast_task.apply_async(args=[task_name],
-                                        queue='fast-{}'.format(session_token))
+                                        queue=queue_name)
     return task_result.id
 
 @app.route('/fast-task/<task_id>/status', methods=['GET'])

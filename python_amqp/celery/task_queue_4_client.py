@@ -5,14 +5,14 @@ import requests
 import click
 
 
+poll_freq_option = click.option('--poll-freq', '-p',
+                                default=1, show_default=True, type=float,
+                                help="Seconds between polls of task's status")
 
-poll_freq_option = click.option('--poll-freq', '-p', default=1, show_default=True, type=float,
-                                help='Seconds every which to poll the status of the tasks')
 
 @click.group()
 def main():
     pass
-
 
 @main.command(name='single')
 @poll_freq_option
@@ -26,7 +26,6 @@ def single_task(poll_freq):
         sleep(poll_freq)
     result = get_expensive_task_result(task_id)
     print 'Task result:', result
-
 
 @main.command(name='concurrent')
 @click.argument('n', type=int, metavar='TASK_NUMBER')
@@ -46,7 +45,6 @@ def n_concurrent_tasks(n, poll_freq):
                 print 'Task', task_n, 'result:', result
                 del pending_tasks[task_n]
         sleep(poll_freq)
-
 
 @main.command(name='mixed')
 @click.argument('n_fast', type=int, metavar='FAST_TASK_NUMBER')
@@ -82,26 +80,30 @@ def n_mixed_concurrent_tasks(n_fast, m_expensive, poll_freq):
 
 
 def execute_expensive_task(task_name):
-    return requests.post('http://localhost:5000/expensive-task/{}'.format(task_name)).text
+    uri = 'http://localhost:5000/expensive-task/{}'.format(task_name)
+    return requests.post(uri).text
 
 def get_expensive_task_status(task_id):
-    return requests.get('http://localhost:5000/expensive-task/{}/status'.format(task_id)).text
+    uri = 'http://localhost:5000/expensive-task/{}/status'.format(task_id)
+    return requests.get(uri).text
 
 def get_expensive_task_result(task_id):
-    return requests.get('http://localhost:5000/expensive-task/{}'.format(task_id)).text
+    uri = 'http://localhost:5000/expensive-task/{}'.format(task_id)
+    return requests.get(uri).text
 
 
 def execute_fast_task(task_name):
-    return requests.post('http://localhost:5000/fast-task/{}'.format(task_name)).text
+    uri = 'http://localhost:5000/fast-task/{}'.format(task_name)
+    return requests.post(uri).text
 
 def get_fast_task_status(task_id):
-    return requests.get('http://localhost:5000/fast-task/{}/status'.format(task_id)).text
+    uri = 'http://localhost:5000/fast-task/{}/status'.format(task_id)
+    return requests.get(uri).text
 
 def get_fast_task_result(task_id):
-    return requests.get('http://localhost:5000/fast-task/{}'.format(task_id)).text
+    uri = 'http://localhost:5000/fast-task/{}'.format(task_id)
+    return requests.get(uri).text
 
 
 if __name__ == '__main__':
     main()
-
-
