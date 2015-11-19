@@ -87,8 +87,8 @@ The following list are a set of rules to consider about resource contention and 
 
 * Latence between the Queue and the Consumer. Increase the QoS of the Consumer.
 * Message contention because of the FIFO Queue. Spread messages to many queues and consume from them using an almost fairness algorithm.
-* Consumer throughput. Scale vertical using concurrence and/or parallelism and/or scale horizontal using RabbitMQ clustering.
-* Queue Binding is by it self expensive. Use Exchange two Exchange in dynamic subscribe and unsubscribe environments.
+* Consumer throughput. Scale vertical using concurrence and/or parallelism, and/or scale horizontal using RabbitMQ clustering.
+* Queue Binding is by itself expensive. Use Exchange two Exchange in dynamic subscribe and unsubscribe environments.
 * Consume of memory by queues, exchanges, connections and channels.
 * And *Python* by it self.
 
@@ -105,7 +105,7 @@ a queue that sends messages to one Consumer.
 
 .. image:: static/unfair_queue_consuming.png
 
-Can we **grantee** that all messages has the same **chance** to be **consumed** at some specific time? We can't, but should we do? Yes, we should.
+Can we **guarantee** that all messages have the same **chance** to be **consumed** at some specific time? We can't, but should we? Yes, we should.
 The following graphic shows a new architecture that gives as a architecture to implement a fair scheduling using as many queues as many publishers
 there are.
 
@@ -114,17 +114,17 @@ there are.
 Fair scheduling : Considering the throughput
 ============================================
 
-As we saw before at `Bottleneck points`_ slides, there are a set of points that have to be considered to improve the Consumer throughput, definitely
-process of massges as fast we can. The make that we will implement the following charastericics using the **Pika** driver.
+As we saw before at `Bottleneck points`_ slides, there are a set of points that have to be considered to improve the Consumer throughput, to
+process messages as fast as we can. The make that we will implement the following characteristics using the **Pika** driver.
 
-* Scale verticaly of the Consumer using concurrence or parallelism.
+* Scale vertically of the Consumer using concurrence or parallelism.
   
-  * Which is the best cardinality between queues N and consumers M ? How perform the diferent N:M cardinality?
-  * Which is the best pattern to implement the mulitple consumers pardigm ? Concurrence or Parallelism?
+  * Which is the best cardinality between queues N and consumers M ? How to perform the different N:M cardinality?
+  * Which is the best pattern to implement the multiple consumers paradigm? Concurrence or Parallelism?
 
-* Reducing the lantence between the Queue and the Consumer increasing the QoS.
+* Reducing the latency between the Queue and the Consumer increasing the QoS.
 
-  * Wich is the best QoS ?
+  * Witch is the best QoS ?
 
 
 Fair scheduling : Pika parallelism
@@ -169,7 +169,7 @@ that launches N connections - one per thread - and wait until all messages have 
 Fair scheduling : Pika concurrence
 ==================================
 
-Pika implements an Asyncronoous Adapter with a callback pattern to implements Consumers . The following code shows an example
+Pika implements an Asynchronous Adapter with a callback pattern to implement Consumers. The following code shows an example
 that launches N connections sharing the same ioloop and wait until all messages have been consumed.
 
 .. code-block:: python
@@ -226,17 +226,17 @@ Fair scheduling : Pika concurrence
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-Somebody believes that in short latence environments, threading patterns performs better than asyncronous patterns even with
+Somebody believes that in short latency environments, threading patterns performs better than asynchronous patterns even with
 the Python GIL drawback. **Does anybody guess which reason there is behind this sentence ?**
 
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-**Yes** context switching *could* be faster than run a bunch of thousand Python opcode running an asynronous framework such as
+**Yes** context switching *could* be faster than running a bunch of thousand Python opcode running an asynchronous framework such as
 *Pika asyncronous adapter*, *Twisted* or *Tornado*.
 
-The following snippet belongs to the `Select Module`_ implemented by Python that wraps the well knowed *select* syscall, each
-time that one *I/O* operation is performed the *GIL* is relesed, *GIL* wouldn't perturbe your multi thread Python code if It 
+The following snippet belongs to the `Select Module`_ implemented by Python that wraps the well known *select* syscall. Each
+time that one *I/O* operation is performed the *GIL* is released, *GIL* won't perturb your multi thread Python code if it 
 runs short tasks between many *I/O* operations.
 
 .. _Select Module: https://github.com/python/cpython/blob/master/Modules/selectmodule.c#L178
@@ -257,7 +257,7 @@ runs short tasks between many *I/O* operations.
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-The following graph displays the behaviour of the Asyncronoys and Threading Pika implementation consuming 5K messages
+The following graph displays the behaviour of the Asynchronous and Threading Pika implementation consuming 5K messages
 from 100 queues using 2, 4, 8, 16 and 32 connections.
 
 .. image:: static/many_queues_without_librabbitmq.png
@@ -271,7 +271,7 @@ Fair scheduling : Pika vs Rabbitpy vs Kombu
 Fair scheduling : Pika vs Librabbitmq, Python is so slow
 ========================================================
 
-But sometimes we forgot how slow can being Python, the following graphic shows the performance difference between the **Librabbitmq** library
+But sometimes we forget how slow can Python be. The following graphic shows the performance difference between the **Librabbitmq** library
 and the **Pika** implementations.
 
 .. image:: static/many_queues_with_librabbitmq.png
@@ -280,5 +280,5 @@ and the **Pika** implementations.
 is just the consumer callback.
 
 conclusions
-===============
+===========
 
