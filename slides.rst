@@ -12,12 +12,14 @@ AMQP from Python, advanced design patterns
   * PyTest
   * and so on
 
-* This talk is just a good selection of two years of experience using AMQP with Python.
-* We will try to move our audience from the basics of AMQP with Python to something called *advanced* 
+* This talk is just a selection of two years of experience using AMQP with Python.
+* We will try to bring our audience from the basics of AMQP with Python to something called *advanced*
 * The whole talk and code used can be *forked* from git https://github.com/pfreixes/python-amqp-pycones
+* do you need more technical stuff? Read this `post`_
 
 .. _@pfreixes: https://twitter.com/pfreixes
 .. _@Arnau_Orriols: https://twitter.com/Arnau_Orriols
+.. _post: http://spring.io/blog/2011/04/01/routing-topologies-for-performance-and-scalability-with-rabbitmq/
 
 Basics of AMQP
 ===============
@@ -220,14 +222,14 @@ Fair scheduling : Pika concurrence
     consumers = [Consumer(i) for i in xrange(0,  CONNECTIONS)]
     map(lambda tq: tq[0].add_queue('queue_{}'.format(tq[1])), izip(cycle(consumers), xrange(0, QUEUES)))
     ioloop.start()
-
+,
 
 
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-Somebody believes that in short latency environments, threading patterns performs better than asynchronous patterns even with
-the Python GIL drawback. **Does anybody guess which reason there is behind this sentence ?**
+`Somebody`_ believes that in short latency environments, threading patterns perform better than asynchronous patterns even with
+the Python GIL drawback. **Can you guess which is the reason behind this sentence ?**
 
 Fair scheduling : Concurrence vs Parallelism
 ============================================
@@ -254,6 +256,8 @@ runs short tasks between many *I/O* operations.
         ....
     }
 
+.. _Somebody : http://techspot.zzzeek.org/2015/02/15/asynchronous-python-and-databases/
+
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
@@ -276,7 +280,7 @@ and the **Pika** implementations.
 
 .. image:: static/many_queues_with_librabbitmq.png
 
-**Librabbitmq** is written the most of it using the *C* language, so the code executed by the Consumer that is handled by the interpreter
+most of **Librabbitmq** is written using the *C* language, so the code executed by the Consumer that is handled by the interpreter
 is just the consumer callback.
 
 conclusions
