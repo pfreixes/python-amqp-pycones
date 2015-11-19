@@ -97,14 +97,22 @@ Celery
 
 bar
 
-many_queues
+Fair scheduling
 ===============
 
-foo
+put graphic here
+
+Fair scheduling 
+===============
+
+But sometimes we forgot how slow can being Python, the following graphic shows the performance difference between the **Librabbitmq** library
+and the **Pika** implementations.
+
+.. image:: static/many_queues_with_librabbitmq.png
+
+**Librabbitmq** is written the most of it using the *C* language, so the code executed by the Consumer that is handled by the interpreter
+is just the consumer callback.
 
 conclusions
 ===============
 
-bar
-
-bar

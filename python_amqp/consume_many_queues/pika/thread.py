@@ -63,21 +63,21 @@ class Thread(ConsumeManyQueuesBase):
     DESCRIPTION = "Each Thread runs a Pika bloking adpater, threads"
 
     def parameters(self):
-        return [{"threads": threads} for threads in
+        return [{"connections": threads} for threads in
                 takewhile(lambda threads: threads < self.queues/2,
                           map(lambda _: 2**_, xrange(1, self.queues)))]
 
-    def setUp(self, threads=2):
+    def setUp(self, connections=2):
         """ Create all threads necessary to run the parametrized test. Each thread will stablish a
         connection and will bind on a set of queues.
         """
-        self._threads = [Consumer(messages=self.messages) for i in xrange(0, threads)]
+        self._threads = [Consumer(messages=self.messages) for i in xrange(0, connections)]
 
         # it spreads the queues over the consumers until they run out.
         map(lambda tq: tq[0].add_queue(QUEUE_NAME.format(number=tq[1])),
             izip(cycle(self._threads), xrange(0, self.queues)))
 
-    def test(self, threads=2):
+    def test(self, connections=2):
         """ Start the treads to consume all messaages """
         map(lambda thread: thread.start(), self._threads)
         return map(lambda thread: thread.join(), self._threads)

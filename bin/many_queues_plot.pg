@@ -1,0 +1,19 @@
+#!/usr/bin/gnuplot
+reset
+set terminal png
+
+set xdata
+set xlabel "connections"
+
+set ylabel "msgs/second"
+
+set title "Performance per connections"
+set key reverse Left outside
+set grid
+
+set style data lines
+
+plot 'static/many_queues.data' using 1:2 title "Pika Threaded", \
+"" using 1:3 title "Pika Async", \
+"" using 1:4 title "Librabbimq Threaded"
+#

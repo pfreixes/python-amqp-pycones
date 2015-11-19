@@ -94,8 +94,8 @@ class ConsumeManyQueuesBase(object):
         this function and return a list of dictionaries. Each dictionary will be passed
         as keyword arguments of the test function.
 
-        For example with the list [{'threads': 2}, {'threads': 4}], the test function
-        will be called twice with threads 2 and 4.
+        For example with the list [{'connections': 2}, {'connections': 4}], the test function
+        will be called twice with connections 2 and 4.
 
         If this function is not override the test function will be called once without
         params

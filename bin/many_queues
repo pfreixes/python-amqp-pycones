@@ -11,7 +11,7 @@ import sys
 import click
 import logging
 
-from optparse import OptionParser
+from itertools import groupby
 
 from python_amqp.consume_many_queues import (
     list as list_tests,
@@ -76,24 +76,46 @@ def cmd_info(test_name):
 @click.option('--messages', default=MESSAGES,
               type=int,
               help='Publish this amount of messsages to each queue. Default {}'.format(MESSAGES))
+@click.option('--plot-result', is_flag=True, help='Return results formatted to be used by gnuplot')
 @click.argument('test_name', nargs=-1)
-def cmd_run(queues, messages, test_name):
+def cmd_run(queues, messages, plot_result, test_name):
     # test_name is a tuple containing a names of tests, or when there is no 
     # arguments it is a empty tuple.
     results = run(tests=test_name, queues=queues, messages=messages)
 
-    # reorder the tests giving the most faster at the top of the list,
-    # each result is composed by the attr name, real, user, sys, msg/sec
-    # we use the last one to order.
-    results.sort(key=lambda result: result[-1])
+    if plot_result:
+        # A gnuplot data file expects a file like : 
+        #
+        # 2 10 12 1
+        # 4 244 366 128
+        # 8 456 613 345
+        # ..
+        # 
+        # The first column is the number of connections/threads used and each
+        # following column holds the messages per second got by each experiment
+        # with this amount of connections/threads. For each row the order of
+        # experiments is not modified.
 
-    print "+-------------------+-------------------------+---------+---------+---------+-------+"
-    print "|Name               |Parameters               |     Real|     User|      Sys|  Msg/s|"
-    print "+-------------------+-------------------------+---------+---------+---------+-------+"
-    for result in results:
-        name, parameters, real, user, sys_, msgs_second = result
-        print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(19), str(parameters).ljust(25), real, user, sys_, msgs_second)
-    print "+------------------+-------------------------+---------+---------+---------+--------+"
+        # Group the experiments by the connections used. First pull out those experiments 
+        # that haven't used the connections as a parameter
+        tests_with_connections = filter(lambda r: 'connections' in r[1], results)
+        tests_with_connections.sort(key=lambda r: r[1]['connections'])
+        for connections, columns in groupby(tests_with_connections, key=lambda r: r[1]['connections']):
+            print "{connections} {columns}".format(connections=connections,
+                                                   columns=" ".join([str(round(c[-1],2)) for c in columns]))
+    else:
+        # sort the tests giving the most faster at the top of the list,
+        # each result is composed by the attributes name, parameters, real, user, 
+        # sys, msg/sec. We use the last one to sort it.
+        results.sort(key=lambda result: result[-1])
+
+        print "+-------------------+-------------------------+---------+---------+---------+-------+"
+        print "|Name               |Parameters               |     Real|     User|      Sys|  Msg/s|"
+        print "+-------------------+-------------------------+---------+---------+---------+-------+"
+        for result in results:
+            name, parameters, real, user, sys_, msgs_second = result
+            print "|%s|%s|% 9.2f|% 9.2f|% 9.2f|% 7d|" % (name.ljust(19), str(parameters).ljust(25), real, user, sys_, msgs_second)
+        print "+------------------+-------------------------+---------+---------+---------+--------+"
 
 
 if __name__ == "__main__":
