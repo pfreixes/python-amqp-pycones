@@ -1,7 +1,6 @@
 AMQP from Python, advanced design patterns
 ==========================================
 
-.. toctree::
-   :maxdepth: 2
+The presentation can be seen `here`_
 
-    slides
+.. _`here` : https://github.com/pfreixes/python-amqp-pycones/blob/master/slides.rst
