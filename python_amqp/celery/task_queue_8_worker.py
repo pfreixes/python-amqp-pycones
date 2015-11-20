@@ -7,17 +7,10 @@ app = Celery('tasks', backend='amqp://', broker='amqp://')
 
 app.conf.update({
     'CELERY_TRACK_STARTED': True,
-    'CELERY_TASK_SERIALIZER': 'json',
-    'CELERY_RESULT_SERIALIZER': 'json',
     'CELERYD_PREFETCH_MULTIPLIER': 1,
-    'CELERY_QUEUES': {
-        'expensive': {'exchange': 'main-exchange',
-                                 'exchange_type': 'topic',
-                                 'routing_key': 'tasks.expensive_task'},
-        'fast': {
-                            'exchange': 'main-exchange',
-                            'exchange_type': 'topic',
-                            'routing_key': 'tasks.fast_task'},
+    'CELERY_ROUTES': {
+        'tasks.expensive_task': {'queue': 'expensive'},
+        'tasks.fast_task': {'queue': 'fast'},
     }
 })
 

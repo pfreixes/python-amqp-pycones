@@ -248,9 +248,34 @@ Celery: From the tutorial to the real world
 ===========================================
 
 **Dynamic routing**. With the previous Celery features, a very complex AMQP topology can be declared, and Celery will take care of the creation
-and binding of queues and exchanges. But this declaration is static, and we need the capabilities to act dynamically upon it.
+and binding of queues and exchanges. But this declaration is static, and we might need the capabilities to act dynamically upon it.
 
-TODO
+1. Tell the worker to consume from a queue at runtime:
+
+.. code-block:: python
+
+    queue_name = 'expensive-{}'.format(session_token)
+    worker_app.control.add_consumer(
+        queue=queue_name,
+        destination=['expensive-task@worker']
+    )
+
+2. Specify the destination queue at task's schedule time:
+
+.. code-block:: python
+
+    queue_name = 'expensive-{}'.format(session_token)
+    task_result = expensive_task.apply_async(queue=queue_name)
+
+Celery: From the tutorial to the real world
+===========================================
+
+**Polyglot Integration**. Finally, down the rabbit hole. Regardless of the bloated software that Celery is now, essentially it is build upon a quite simple protocol:
+
+.. image:: static/celery_protocol.png
+
+
+Which can be implemented by hand in any language with an AMQP client library, both client and worker.
 
 Fair scheduling
 ===============
