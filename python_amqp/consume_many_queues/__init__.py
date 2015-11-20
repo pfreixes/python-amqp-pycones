@@ -32,13 +32,20 @@ from python_amqp.rabbitmqrpc import (
 from python_amqp.consume_many_queues.pika import Async as PikaAsync
 from python_amqp.consume_many_queues.pika import Thread as PikaThread
 from python_amqp.consume_many_queues.pika import AsyncQoS as PikaAsyncQoS
+from python_amqp.consume_many_queues.twisted import Async as TwistedAsync
+from python_amqp.consume_many_queues.pyamqp import Thread as PyamqpThread
+from python_amqp.consume_many_queues.rabbitpy import Thread as RabbitpyThread
 from python_amqp.consume_many_queues.librabbitmq import Thread as LibRabbitmqThread
 
 from python_amqp.consume_many_queues.consume_many_queues_base import TestFailed
 from python_amqp.consume_many_queues.consume_many_queues_base import EXCHANGE_NAME, QUEUE_NAME
 
 def _installed_tests():
-    return [PikaThread, PikaAsync, PikaAsyncQoS, LibRabbitmqThread]
+    return [
+        PikaThread, PikaAsync, PikaAsyncQoS,
+        TwistedAsync, RabbitpyThread, PyamqpThread,
+        LibRabbitmqThread
+    ]
 
 def _red_message(message):
     # Used to print a message over the console using
