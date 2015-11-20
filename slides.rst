@@ -201,7 +201,6 @@ Where to go from there:
 #. Dynamic routing.
 #. Polyglot integration.
 
-
 Fair scheduling
 ===============
 
@@ -231,7 +230,7 @@ process messages as fast as we can.
 
   * Witch is the best QoS ?
 
-We will findn out all of these questions using a **Pika** implementation and comparing it with other drivers.
+We will find out all of these questions using a **Pika** implementation and comparing it with other drivers.
 
 Fair scheduling : Pika parallelism
 ==================================
@@ -330,40 +329,7 @@ Fair scheduling : Pika concurrence
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-`Somebody`_ believes that in short latency environments, threading patterns perform better than asynchronous patterns even with
-the Python GIL drawback. **Can you guess which is the reason behind this sentence ?**
-
-Fair scheduling : Concurrence vs Parallelism
-============================================
-
-**Yes** context switching *could* be faster than running a bunch of thousand Python opcode running an asynchronous framework such as
-*Pika asyncronous adapter*, *Twisted* or *Tornado*.
-
-The following snippet belongs to the `Select Module`_ implemented by Python that wraps the well known *select* syscall. Each
-time that one *I/O* operation is performed the *GIL* is released, *GIL* won't perturb your multi thread Python code if it 
-runs short tasks between many *I/O* operations.
-
-.. _Select Module: https://github.com/python/cpython/blob/master/Modules/selectmodule.c#L178
-
-.. code:: cpp
-
-    static PyObject * select_select(PyObject *self, PyObject *args)
-    {
-        .......
-
-        Py_BEGIN_ALLOW_THREADS
-        n = select(max, &ifdset, &ofdset, &efdset, tvp);
-        Py_END_ALLOW_THREADS
-
-        ....
-    }
-
-.. _Somebody : http://techspot.zzzeek.org/2015/02/15/asynchronous-python-and-databases/
-
-Fair scheduling : Concurrence vs Parallelism
-============================================
-
-The following graph displays the behaviour of the Asynchronous and Threading Pika implementation consuming 5K messages
+The following graph compares the behaviour of the Asynchronous and Threading Pika implementation consuming 5K messages
 from 100 queues using 2, 4, 8, 16 and 32 connections.
 
 .. image:: static/many_queues_without_librabbitmq.png
@@ -385,8 +351,49 @@ We implemented a *Pika Asyncronous* that tries with different QoS value, getting
 
 .. _ack : https://www.rabbitmq.com/confirms.html
 
-Fair scheduling : Pika vs Librabbitmq, Python is so slow
-========================================================
+Fair scheduling : Python is slow by nature, the yield overhead
+==============================================================
+
+`Somebody`_ believes that in **short latency and fast tasks environments** threading patterns perform better than 
+asynchronous patterns, even with the Python GIL drawback.
+
+**Can you guess which is the reason behind this sentence ?**
+
+.. _Somebody : http://techspot.zzzeek.org/2015/02/15/asynchronous-python-and-databases/
+
+Fair scheduling :  Python is slow by nature, the yield overhead 
+===============================================================
+
+These people argue that Python is enough slow to spend more time running the asyncronous stack than performing IO operations.
+
+.. code:: bash
+
+                             Time spent
+    +-------+---------------------------------------+--------+
+    | Input |         Python Asyncronous Code       | Output | Thread 1
+    +-------+---------------------------------------+--------+
+                                            +-------+---------------------------------------+--------+
+                                            | Input |         Python Asyncronous Code       | Output | Thread 1
+                                            +-------+---------------------------------------+--------+
+
+Therefore threading patterns with straightforward Python code performs better.
+
+.. code:: bash
+
+               Time spent
+    +-------+--------------------+--------+
+    | Input |     Python Code    | Output |  Thread 1
+    +-------+--------------------+--------+
+                         +-------+--------------------+--------+
+                         | Input |     Python Code    | Output | Thread 2
+                         +-------+--------------------+--------+
+
+
+Each time that one *I/O* operation is performed the *GIL* is released, *GIL* won't perturb your multi thread Python code if it 
+runs short tasks between many *I/O* operations. We will try to find out how of true is this belief.
+
+Fair scheduling : Python is slow by nature, using a C driver
+============================================================
 
 But sometimes we forget how slow can Python be. The following table shows the performance difference between the **Librabbitmq** library
 and the best numbers got by the different **Pika** implementations.
@@ -409,8 +416,8 @@ and the best numbers got by the different **Pika** implementations.
 Most of **Librabbitmq** is written using the *C* language, so the code executed by the Consumer that is handled by the interpreter
 is just the consumer callback.
 
-Fair scheduling : All results together, Python is so so so slow
-===============================================================
+Fair scheduling : All results together
+======================================
 
 .. code:: bash
 
