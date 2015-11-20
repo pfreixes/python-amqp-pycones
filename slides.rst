@@ -210,9 +210,9 @@ a queue that sends messages to one Consumer.
 
 .. image:: static/unfair_queue_consuming.png
 
-Can we **guarantee** that all messages have the same **chance** to be **consumed** at some specific time? We can't, but should we? Yes, we should.
-The following graphic shows a new architecture that gives as a architecture to implement a fair scheduling using as many queues as many publishers
-there are.
+Can we **guarantee that all publishers - not messages - have the same chance to be attended at some specific time**? We can't, but should we? Yes, we should.
+The following graphic shows a new architecture that implements a fair scheduling using as many queues as many publishers there are, giving to each
+publisher the same chance.
 
 .. image:: static/fair_queue_consuming.png
 
@@ -220,7 +220,7 @@ Fair scheduling : Considering the throughput
 ============================================
 
 As we saw before at `Bottleneck points`_ slides, there are a set of points that have to be considered to improve the Consumer throughput, to
-process messages as fast as we can. The make that we will implement the following characteristics using the **Pika** driver.
+process messages as fast as we can.
 
 * Scale vertically of the Consumer using concurrence or parallelism.
   
@@ -231,6 +231,7 @@ process messages as fast as we can. The make that we will implement the followin
 
   * Witch is the best QoS ?
 
+We will findn out all of these questions using a **Pika** implementation and comparing it with other drivers.
 
 Fair scheduling : Pika parallelism
 ==================================
