@@ -372,22 +372,27 @@ These people argue that Python is enough slow to spend more time running the asy
     +-------+---------------------------------------+--------+
     | Input |         Python Asyncronous Code       | Output | Thread 1
     +-------+---------------------------------------+--------+
-                                            +-------+---------------------------------------+--------+
-                                            | Input |         Python Asyncronous Code       | Output | Thread 1
-                                            +-------+---------------------------------------+--------+
-
+                                        +-------+    +---------------------------------------+--------+
+                                        | Input |    |         Python Asyncronous Code       | Output | Thread 1
+                                        +-------+    +---------------------------------------+--------+
+                                                      
 Therefore threading patterns with straightforward Python code performs better.
 
 .. code:: bash
 
-               Time spent
+                                  _ _ _ _ GIL Released
+                                 /
+                                 |
+               Time spent        |
     +-------+--------------------+--------+
     | Input |     Python Code    | Output |  Thread 1
     +-------+--------------------+--------+
-                         +-------+--------------------+--------+
-                         | Input |     Python Code    | Output | Thread 2
-                         +-------+--------------------+--------+
-
+                      +-------+   +--------------------+--------+
+                      | Input |   |  Python Code       | Output | Thread 2
+                      +-------+   +--------------------+--------+
+                                  |
+                                  |
+                                  \_ _ _ _  GIL Adquired
 
 Each time that one *I/O* operation is performed the *GIL* is released, *GIL* won't perturb your multi thread Python code if it 
 runs short tasks between many *I/O* operations. We will try to find out how of true is this belief.
