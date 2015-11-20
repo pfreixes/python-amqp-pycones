@@ -201,6 +201,57 @@ Where to go from there:
 #. Dynamic routing.
 #. Polyglot integration.
 
+Celery: From the tutorial to the real world
+===========================================
+
+**Scaling vertically**. As the message frequency increases, the first step is to increase the worker throughput, and Celery gives this for free:
+
+Concurrency Pools:
+
+* prefork (default)
+* threads (experimental)
+* Eventlet (still scary)
+* Gevent (still scary)
+
+Start a worker with N processes/threads/greenthreads:
+
+.. code-block:: bash
+
+        $ celery worker -A module -P <pool> -c <concurrency-slots>
+
+Celery: From the tutorial to the real world
+===========================================
+
+**Scaling horizontally**. Regardless of the pool used, at certain point increasing the concurrency-slots
+of the worker's pool will start to affects the worker's performance negatively. 
+
+* Careful with the prefetch_count of the consumer, or you might find tasks waiting in a worker's buffer while other nodes are idle. 
+* PREFETCH_MULTIPLIER: Celery handles this in a clever way. You configure the number of tasks waiting in the buffer for each concurrency-slot.
+
+**Worker specialization**. Also, if workers consume any kind of task, we can end up with fast task starved because more expensive tasks are blocking
+the worker nodes. 
+
+Celery routing facilities:
+
+* CELERY_ROUTES: task \*..1 queue mapping
+* CELERY_QUEUES: Detailed definition of queues, including:
+    * Exchange to which binded
+    * Routing key of the binding
+
+Tell each worker node from which queue to consume:
+
+.. code-block:: bash
+
+        $ celery worker -A module -Q <queue>,<queue>
+
+Celery: From the tutorial to the real world
+===========================================
+
+**Dynamic routing**. With the previous Celery features, a very complex AMQP topology can be declared, and Celery will take care of the creation
+and binding of queues and exchanges. But this declaration is static, and we need the capabilities to act dynamically upon it.
+
+TODO
+
 Fair scheduling
 ===============
 
