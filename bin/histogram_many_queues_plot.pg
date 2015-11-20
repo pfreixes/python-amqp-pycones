@@ -1,0 +1,8 @@
+#!/usr/bin/gnuplot
+reset
+set terminal png
+set xlabel "Connections"
+set style data histogram
+set style fill solid border -1
+set boxwidth 0.8
+p 'static/many_queues_async_vs_threading.data'  u 2:xticlabels(1) title 'Twisted-A', '' u 3 title 'RabbitMQ-T', '' u 4 title 'Pika-T', '' u 5 title 'Pika-A', '' u 6 title 'PyAmqp-T'

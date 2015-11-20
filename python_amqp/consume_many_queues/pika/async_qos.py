@@ -73,7 +73,7 @@ class AsyncQoS(ConsumeManyQueuesBase):
                 takewhile(lambda prefetch: prefetch  < self.queues/2,
                           map(lambda _: 2**_, xrange(2, self.queues)))]
 
-    def setUp(self, prefetch=2, connections=8):
+    def setUp(self, prefetch=2, connections=32):
         """ Create all connections necessary to run the parametrized test. Each connection will stablish a
         will bind on a set of queues.
         """
@@ -91,7 +91,7 @@ class AsyncQoS(ConsumeManyQueuesBase):
         map(lambda cq: cq[0].add_queue(QUEUE_NAME.format(number=cq[1])),
             izip(cycle(self._consumers), xrange(0, self.queues)))
 
-    def test(self, connections=2, prefetch=2):
+    def test(self, connections=32, prefetch=2):
         """ Start the ioloop, connecte all consumers and then consume all messaages """
         self._ioloop.start()
 

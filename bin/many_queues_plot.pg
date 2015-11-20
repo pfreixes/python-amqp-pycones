@@ -13,7 +13,6 @@ set grid
 
 set style data lines
 
-plot 'static/many_queues.data' using 1:2 title "Pika Threaded", \
+plot 'static/many_queues_async_vs_threading.data' using 1:2 title "Pika Threaded", \
 "" using 1:3 title "Pika Async", \
-"" using 1:4 title "Librabbimq Threaded"
-#
+"" using 1:4 title "Pyamqp Threaded"

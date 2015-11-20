@@ -1,0 +1,17 @@
+#!/usr/bin/gnuplot
+reset
+set terminal png
+
+set xdata
+set xlabel "QoS"
+
+set ylabel "msgs/second"
+
+set title "Performance per QoS"
+set key reverse Left outside
+set grid
+
+set style data lines
+
+plot 'static/many_queues_qos.data' using 1:2 title "Pika Async QoS", \
+"" using 1:3 title "Pyamqp Thread QoS"

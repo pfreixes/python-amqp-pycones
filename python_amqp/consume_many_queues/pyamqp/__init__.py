@@ -6,3 +6,4 @@ Consume Many Queues PyAmqp implementations
 """
 
 from python_amqp.consume_many_queues.pyamqp.thread import Thread
+from python_amqp.consume_many_queues.pyamqp.thread_qos import ThreadQoS

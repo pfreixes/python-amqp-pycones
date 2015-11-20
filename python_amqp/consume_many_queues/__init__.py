@@ -34,6 +34,7 @@ from python_amqp.consume_many_queues.pika import Thread as PikaThread
 from python_amqp.consume_many_queues.pika import AsyncQoS as PikaAsyncQoS
 from python_amqp.consume_many_queues.twisted import Async as TwistedAsync
 from python_amqp.consume_many_queues.pyamqp import Thread as PyamqpThread
+from python_amqp.consume_many_queues.pyamqp import ThreadQoS as PyamqpThreadQoS
 from python_amqp.consume_many_queues.rabbitpy import Thread as RabbitpyThread
 from python_amqp.consume_many_queues.librabbitmq import Thread as LibRabbitmqThread
 
@@ -44,7 +45,7 @@ def _installed_tests():
     return [
         PikaThread, PikaAsync, PikaAsyncQoS,
         TwistedAsync, RabbitpyThread, PyamqpThread,
-        LibRabbitmqThread
+        LibRabbitmqThread, PyamqpThreadQoS
     ]
 
 def _red_message(message):

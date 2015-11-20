@@ -281,141 +281,62 @@ process messages as fast as we can.
 
   * Witch is the best QoS ?
 
-We will find out all of these questions using a **Pika** implementation and comparing it with other drivers.
+We will figure out all of these questions using diferent implementations with the different Python drivers and 
+comparing them.
 
-Fair scheduling : Pika parallelism
-==================================
+Fair scheduling : Concurrence or Parallelism 
+============================================
 
-Pika implements a Blocking Adapter with a kind and easy interface to implement Consumers. The following code shows an example
-that launches N connections - one per thread - and wait until all messages have been consumed.
+The idea is scale the consumer adding more executions flows. We did two aproximations : Threading or Asyncronous.
 
-.. code-block:: python
+* Drivers supporting bloking connections, then implemented using a threading aproximation:
 
-    MESSAGES = 100
-    QUEUES = 50
-    CONNECTIONS = 32
+    * Rabbitpy
+    * Pyamqp
+    * Pika
 
-    class Consumer(threading.Thread):
-        def __init__(self, *args, **kwargs):
-            self._queues = 0
-            self._connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-            self._channel = self._connection.channel()
-            self._channel.basic_qos(prefetch_size=0, prefetch_count=1, all_channels=True)
-            threading.Thread.__init__(self, *args, **kwargs)
+* Asyncronous
 
-        def add_queue(self, queue):
-            self._queues += 1
-            self._channel.basic_consume(self._callback, queue=queue)
+    * Pika
+    * Twisted
 
-        def _callback(self, channel, method, properties, message):
-            self._channel.basic_ack(delivery_tag=method.delivery_tag)
-            self._rx += 1
-            if self._rx == (MESSAGES * self._queues):
-                self._channel.stop_consuming()
+For each experimented we tried a different amount of connections where the grow factor is *^2*, starting from 2 
+till the first number lesser than the number of queues divided by 2.
 
-        def run(self):
-            self._channel.start_consuming()
+For example, for an experiment of 100 queues we executed each driver test 2, 4, 8, 16, and 32 connections.
 
-    threads = [Consumer() for i in xrange(0,  CONNECTIONS)]
-    map(lambda tq: tq[0].add_queue('queue_{}'.format(tq[1])), izip(cycle(threads), xrange(0, QUEUES)))
-    map(lambda thread: thread.start(), threads)
-    map(lambda thread: thread.join(), threads)
+For threading solutions each connection is holded by one thread.
 
-
-Fair scheduling : Pika concurrence
-==================================
-
-Pika implements an Asynchronous Adapter with a callback pattern to implement Consumers. The following code shows an example
-that launches N connections sharing the same ioloop and wait until all messages have been consumed.
-
-.. code-block:: python
-
-    MESSAGES = 100
-    QUEUES = 50
-    CONNECTIONS = 32
-
-    ioloop = pika.adapters.select_connection.IOLoop()
-    consumers_finsihed = [False] * CONNECTIONS
-
-    class Consumer(object):
-        def __init__(self, id_):
-            self._id = id_
-            self._connection = pika.SelectConnection(
-                pika.ConnectionParameters(host='localhost', socket_timeout=1000),
-                self.on_connection_open, custom_ioloop=ioloop, stop_ioloop_on_close=False)
-
-        def on_connection_open(self, unused_connection):
-            self._connection.add_on_close_callback(self.on_connection_closed)
-            self._connection.channel(on_open_callback=self.on_channel_open)
-
-        def on_channel_open(self, channel):
-            self._channel = channel
-            self._channel.add_on_close_callback(self.on_channel_closed)
-            self._channel.basic_qos(prefetch_size=0, prefetch_count=1, all_channels=True)
-            self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
-            for queue in self._queue_names:
-                self._channel.basic_consume(self.on_message, queue)
-
-
-Fair scheduling : Pika concurrence
-==================================
-
-.. code-block:: python
-
-        def add_queue(self, queue_name):
-            self._queue_names.append(queue_name)
-
-        def on_message(self, basic_deliver, properties, message):
-            self._channel.basic_ack(basic_deliver.delivery_tag)
-            self._rx += 1
-            if self._rx == (MESSAGES * len(self._queue_names)):
-                consumers_finished[self._id] = True
-                if all(consumers_finished):
-                    ioloop.stop()
-
-    consumers = [Consumer(i) for i in xrange(0,  CONNECTIONS)]
-    map(lambda tq: tq[0].add_queue('queue_{}'.format(tq[1])), izip(cycle(consumers), xrange(0, QUEUES)))
-    ioloop.start()
 
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-The following graph compares the behaviour of the Asynchronous and Threading Pika implementation consuming 5K messages
-from 100 queues using 2, 4, 8, 16 and 32 connections.
+The following graph compares the behaviour of the Asynchronous and Threading implementations consuming 5K messages
+from 100 queues using 2, 4, 8, 16, 32.
 
-.. image:: static/many_queues_without_librabbitmq.png
+.. image:: static/many_queues_async_vs_threading_840.png
 
-Fair scheduling : Pika concurrence with QoS > 1
-===============================================
+**Note: Twisted and Rabbitpy does not have suport to bind many queues for one connection. Therefore we started as many connections as many queues there are**
 
-Another way to increment the throughput of the worker is try to reduce the latence between the Consumer and the Broker, AMQP specifies a field
-called QoS that represents the number of messages that the Broker can send publish without get one ack. The QoS used by one Consumer is always
-by default 1.
 
-If the Consumer decides to use a channel with a QoS value greater than 1 the buffers belonging to the Operating System could store messages that
-have not been consumed still incrementing as a side effect the memory consumption. Once the Consumer decides to `ack`_ one message it can use the 
-multiple flag confirming automatically all previous messages.
+Fair scheduling : Concurrence vs Parallelism 
+============================================
 
-We implemented a *Pika Asyncronous* that tries with different QoS value, getting the following results:
+We thought that the threading patterns used by python programs were from the beggining a bad choose because of the GIL. **This is not at all True**.
 
-.. image:: static/many_queues_qos.png
-
-.. _ack : https://www.rabbitmq.com/confirms.html
-
-Fair scheduling : Python is slow by nature, the yield overhead
-==============================================================
-
-`Somebody`_ believes that in **short latency and fast tasks environments** threading patterns perform better than 
-asynchronous patterns, even with the Python GIL drawback.
+`Somebody`_ believes that in **short latency and fast tasks environments** threading patterns perform better than  asynchronous patterns, even with the Python GIL drawback.
 
 **Can you guess which is the reason behind this sentence ?**
 
 .. _Somebody : http://techspot.zzzeek.org/2015/02/15/asynchronous-python-and-databases/
 
-Fair scheduling :  Python is slow by nature, the yield overhead 
-===============================================================
+Fair scheduling : Concurrence vs Parallelism 
+============================================
 
-These people argue that Python is enough slow to spend more time running the asyncronous stack than performing IO operations.
+
+These people argue that Python is enough slow to spend more time running the asyncronous stack than performing IO operations. The following
+chart tries to explain how a Python code running on top of an asyncronous pattern is executed, where the asyncronous code taskes more time
+than the I/O.
 
 .. code:: bash
 
@@ -427,7 +348,7 @@ These people argue that Python is enough slow to spend more time running the asy
                                         | Input |    |         Python Asyncronous Code       | Output | Thread 1
                                         +-------+    +---------------------------------------+--------+
                                                       
-Therefore threading patterns with straightforward Python code performs better.
+However, the same programm running on an threading patterns with a lesser footprint of Python opcode, it performs better. Even with the GIL
 
 .. code:: bash
 
@@ -445,25 +366,89 @@ Therefore threading patterns with straightforward Python code performs better.
                                   |
                                   \_ _ _ _  GIL Adquired
 
-Each time that one *I/O* operation is performed the *GIL* is released, *GIL* won't perturb your multi thread Python code if it 
-runs short tasks between many *I/O* operations. We will try to find out how of true is this belief.
+Each time that one *I/O* operation is performed the *GIL* is released, *GIL* wouldn't perturb your multi thread Python code if it 
+runs short tasks between many *I/O* operations.
+
+
+Fair scheduling : Pika concurrence with QoS > 1
+===============================================
+
+Another way to increment the throughput of the worker is try to reduce the latence between the Consumer and the Broker. AMQP implements the
+QoS feature that allow to the consumer get mulitple messages. Once the Consumer decides to `ack`_ one message it can use the multiple flag 
+confirming automatically all of the previous messages.
+
+We implemented a *Pika Asyncronous* and *PyAamqp Thread* implementations that tries with different QoS value. We used the best number of connections
+got from the last experiment, 32 for *Pika* and 2 for *PyAmqp*:
+
+.. image:: static/many_queues_qos.png
+
+.. _ack : https://www.rabbitmq.com/confirms.html
+
+
+Fair scheduling : Pika concurrence with QoS > 1
+===============================================
+
+.. image:: static/i_have_no_fucking_clue_whats_going_on.jpg
+
+.. _ack : https://www.rabbitmq.com/confirms.html
+
+
+Fair scheduling : And there was light
+=====================================
+
+.. code:: bash
+
+    +-------------------+-------------------------+---------+---------+---------+-------+
+    |Name               |Parameters               |     Real|     User|      Sys|  Msg/s|
+    +-------------------+-------------------------+---------+---------+---------+-------+
+    |Pika_Async         |{'connections': 32}      |     1.60|     1.39|     0.09|   6250|
+    |Pyamqp_Threads     |{'connections': 2}       |     1.10|     1.02|     0.37|   9090|
+    |Pyamqp_Threads_QoS |{'prefetch': 4}          |     1.26|     1.03|     0.46|   7936|
+    |Pyamqp_Threads_QoS |{'prefetch': 8}          |     1.17|     0.98|     0.36|   8547|
+    |Pyamqp_Threads_QoS |{'prefetch': 16}         |     1.13|     0.93|     0.53|   8849|
+    |Pyamqp_Threads_QoS |{'prefetch': 32}         |     1.08|     0.93|     0.38|   9259|
+    |Pyamqp_Threads_QoS |{'prefetch': 64}         |     1.04|     0.97|     0.48|   9615|
+    |Pika_Async_QoS     |{'prefetch': 4}          |     0.84|     0.80|     0.02|  11904|
+    |Pika_Async_QoS     |{'prefetch': 8}          |     0.75|     0.72|     0.02|  13333|
+    |Pika_Async_QoS     |{'prefetch': 16}         |     0.69|     0.66|     0.02|  14492|
+    |Pika_Async_QoS     |{'prefetch': 64}         |     0.69|     0.67|     0.01|  14492|
+    |Pika_Async_QoS     |{'prefetch': 32}         |     0.66|     0.63|     0.02|  15151|
+    +------------------+-------------------------+---------+---------+---------+--------+
+
+Fair scheduling : And there was light
+=====================================
+
+Notice that:
+
+* When the *Real* time is close to the *User* + *Sys* times means that we are reduced the *I/O* waits almost to zero. 
+* The *Real* time is the Python code belonging to the full stack : driver + test code
+* The *Sys* time is the time consumed by the syscalls run by the test.
+
+
+There is no a sliverbullet but:
+
+* The *Sys* time in *asyncronous* patterns is lesser than *threading* patterns
+* With high pressure enviroments *GIL* is still a pain in the ass.
+* The issue is not with the Ascronous framework, it is related with the amount of Python bytcode necessary to dispatch a messaage.
+
+
+And the last one:
+
+* When Pika uses QoS removes a lot expensive calls to perform each Ack. This is because run better
 
 Fair scheduling : Python is slow by nature, using a C driver
 ============================================================
 
 But sometimes we forget how slow can Python be. The following table shows the performance difference between the **Librabbitmq** library
-and the best numbers got by the different **Pika** implementations.
+and the best numbers got by the previous mplementations.
 
 .. code:: bash
 
     +-------------------+---+-----+------------+ 
     | Implementation    | C | QoS | Msg/Second | 
     +===================+===+=====+============+ 
-    | Pika Threads      | 64|    1|        4032| 
     +-------------------+---+-----+------------+
-    | Pika Async, 64    | 64|    1|        7092| 
-    +-------------------+---+-----+------------+
-    | Pika QoS, 64 8    |  8|   64|       16129| 
+    | Pika Async        | 32|   32|       15151| 
     +-------------------+---+-----+------------+
     | Librabbitmq       |  4|    1|       38461| 
     +-------------------+---+-----+------------+
@@ -472,40 +457,17 @@ and the best numbers got by the different **Pika** implementations.
 Most of **Librabbitmq** is written using the *C* language, so the code executed by the Consumer that is handled by the interpreter
 is just the consumer callback.
 
-Fair scheduling : All results together
-======================================
+The numbers in raw:
 
 .. code:: bash
 
     +-------------------+-------------------------+---------+---------+---------+-------+
     |Name               |Parameters               |     Real|     User|      Sys|  Msg/s|
     +-------------------+-------------------------+---------+---------+---------+-------+
-    |Pika_Async         |{'connections': 2}       |     9.93|     2.36|     0.20|   1007|
-    |Pika_Threads       |{'connections': 2}       |     9.82|     2.96|     0.25|   1018|
-    |Pika_Threads       |{'connections': 4}       |     5.17|     2.72|     0.28|   1934|
-    |Pika_Async         |{'connections': 4}       |     4.69|     1.92|     0.14|   2132|
-    |Pika_Threads       |{'connections': 8}       |     3.30|     2.51|     0.44|   3030|
-    |Pika_Threads       |{'connections': 16}      |     2.95|     2.26|     0.49|   3389|
-    |Pika_Async         |{'connections': 8}       |     2.73|     1.67|     0.15|   3663|
-    |Pika_Threads       |{'connections': 32}      |     2.65|     2.32|     0.53|   3773|
-    |Pika_Threads       |{'connections': 64}      |     2.48|     2.32|     0.68|   4032|
-    |Pika_Async         |{'connections': 16}      |     1.84|     1.52|     0.11|   5434|
-    |Pika_Async         |{'connections': 32}      |     1.64|     1.39|     0.10|   6097|
-    |Pika_Async         |{'connections': 64}      |     1.41|     1.20|     0.11|   7092|
-    |Pika_Async_QoS     |{'prefetch': 4}          |     1.16|     1.04|     0.03|   8620|
-    |Pika_Async_QoS     |{'prefetch': 8}          |     0.97|     0.77|     0.03|  10309|
-    |Pika_Async_QoS     |{'prefetch': 16}         |     0.70|     0.66|     0.00|  14285|
-    |Pika_Async_QoS     |{'prefetch': 32}         |     0.63|     0.62|     0.00|  15873|
-    |Pika_Async_QoS     |{'prefetch': 64}         |     0.62|     0.60|     0.01|  16129|
-    |Librabbitmq_Threads|{'connections': 64}      |     0.41|     0.17|     0.10|  24390|
-    |Librabbitmq_Threads|{'connections': 32}      |     0.32|     0.14|     0.08|  31250|
-    |Librabbitmq_Threads|{'connections': 16}      |     0.29|     0.10|     0.10|  34482|
-    |Librabbitmq_Threads|{'connections': 2}       |     0.27|     0.09|     0.05|  37037|
-    |Librabbitmq_Threads|{'connections': 8}       |     0.27|     0.10|     0.08|  37037|
-    |Librabbitmq_Threads|{'connections': 4}       |     0.26|     0.09|     0.06|  38461|
-    +------------------+-------------------------+---------+---------+---------+--------+
-
-
+    |Pika_Async_QoS     |{'prefetch': 32}         |     0.66|     0.63|     0.02|  15151|
+    |Librabbitmq_Threads|{'connections': 2}       |     0.26|     0.08|     0.05|  38461|
+    +-------------------+-------------------------+---------+---------+---------+-------+
+ 
 conclusions
 ===========
 
