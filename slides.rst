@@ -87,17 +87,120 @@ Bottleneck points
 
 The following list are a set of rules to consider about resource contention and bottlenecks that are usually faced when implementing AMQP architectures:
 
-* Latence between the Queue and the Consumer. Increase the QoS of the Consumer.
+* Latency between the Queue and the Consumer. Increase the QoS of the Consumer.
 * Message contention because of the FIFO Queue. Spread messages to many queues and consume from them using an almost fairness algorithm.
 * Consumer throughput. Scale vertical using concurrence and/or parallelism, and/or scale horizontal using RabbitMQ clustering.
 * Queue Binding is by itself expensive. Use Exchange two Exchange in dynamic subscribe and unsubscribe environments.
 * Consume of memory by queues, exchanges, connections and channels.
 * And *Python* by it self.
 
-Celery
-======
+Celery: From the tutorial to the real world
+===========================================
 
-bar
+Celery is an asynchronous, distributed task queue. Thanks to using a message-oriented middleware like RabbitMQ, it achieves:
+
+* Superb transport performance
+* Queue and results durability
+* Scaling flexibility through complex routing
+* Execution over a distributed network of workers
+* High availability.
+
+... Although it also supports other brokers like Redis, MongoDB,...
+
+Celery: From the tutorial to the real world
+===========================================
+
+Use case:
+
+* An HTTP server (Flask)
+* An HTTP client (requests)
+* An asynchronous task queue (Celery)
+
+We'll iterate over the tutorial-simple scenario facing some of the previously listed bottlenecks, seeing
+what tools Celery provides us to solve them. 
+
+Celery: From the tutorial to the real world
+===========================================
+
+The tutorial:
+
+.. code-block:: python
+
+    from celery import Celery
+
+    app = Celery('tasks', backend='amqp://', broker='amqp://')
+    app.conf.update({
+        'CELERY_TRACK_STARTED': True,
+    })
+
+    @app.task(name='my_task')
+    def my_task(task_name):
+        return 'Hello, World, task {}!'.format(task_name)
+
+    if __name__ == '__main__':
+        result = my_task.apply_async(args=['foo'])
+        print 'Task enqueued, go get a coffee...'
+        print 'Task result:', result.get()
+
+Run worker:
+
+.. code-block:: bash
+    
+    $ celery worker -A module
+
+Run the client:
+
+.. code-block:: bash
+    
+    $ python module.py
+    Task enqueued, go get a coffee...
+    Task result: Hello, World, task foo!
+
+
+Celery: From the tutorial to the real world
+===========================================
+
+... Under the hood:
+
+* `app.task` decorator does 2 things:
+    * Builds a `celery.app.task.Task` instance that will act as the client interface.
+    * Registers the callable into the tasks registry of the Celery app, by name. 
+
+* my_task is an instance of `Task`; it contains all the API methods to schedule the execution of the task:
+    * apply_async(args=[], kwargs={}, countdown=0, eta=now, expires=None, retry=None,...)
+    * delay
+    * retry
+    * Canvas workflow: s(), si(), map(), starmap()...
+
+* apply_async returns an `AsyncResult`, used to track the status of the task and to retrieve the result.
+
+Celery: From the tutorial to the real world
+===========================================
+
+... Under the hood:
+
+* When the worker starts up, it **imports the celery app module**,
+  opens AMQP connection to RabbitMQ, declares the needed queues, and start
+  consuming from them.
+
+* When calling apply_async, an AMQP message **with the name of the task** is published to RabbitMQ, routed through the exchange
+  topology until reaches the corresponding destination queues, waiting to be consumed by the queue's workers.
+
+* When the worker receives a message, looks up in the tasks registry for the callable corresponding to the task name received and executes it, with the args and kwargs sent alongside the task name.
+
+* The worker publishes the result of the task to the designated results backend.
+
+Celery: From the tutorial to the real world
+===========================================
+
+Where to go from there:
+
+#. Scaling vertically.
+#. Scaling horizontally.
+#. Worker specialization.
+#. Dynamic routing.
+#. Polyglot integration.
+
 
 Fair scheduling
 ===============

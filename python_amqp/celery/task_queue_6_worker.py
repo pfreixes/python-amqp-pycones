@@ -8,10 +8,7 @@ app = Celery('tasks', backend='amqp://', broker='amqp://')
 app.conf.update({
     'CELERY_TRACK_STARTED': True,
     'CELERYD_PREFETCH_MULTIPLIER': 1,
-    'CELERY_ROUTES': {
-        'tasks.expensive_task': {'queue': 'expensive'},
-        'tasks.fast_task': {'queue': 'fast'},
-    }
+    'CELERY_QUEUES': {},
 })
 
 @app.task(name='tasks.expensive_task')

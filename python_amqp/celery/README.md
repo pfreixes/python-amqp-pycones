@@ -54,7 +54,7 @@ General approach: From the tutorial to a full-fledged AMQP architecture: tacklin
 
 [6]
 
-* ** y users(n^2 slow tasks, m^2 fast tasks), n workers, n processes**.
+* **y users(n^2 slow tasks, m^2 fast tasks), n workers, n processes**.
     * Same issue when multiple users come to play.
     * Users compiting for worker time.
     * Fair queueing: A queue for user/session, n queues for worker.
@@ -72,6 +72,8 @@ General approach: From the tutorial to a full-fledged AMQP architecture: tacklin
   '...'
 }
 ```
+    * Using raw protocol as a client
+    * Using raw protocol as a worker
 
 TODO:
 
@@ -84,3 +86,5 @@ TODO:
     * Careful when using revoke as a way to update ETA of task. Tasks will only be revoked when they
       are sheduled to execute.
     * This might not be a problem memory wise, but in case of worker restart the message churn can be dramatic.
+
+* **Gotcha's: Shared state & the different concurrency pools**

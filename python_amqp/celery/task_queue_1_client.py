@@ -29,7 +29,7 @@ def single_task(poll_freq):
 
 
 def execute_expensive_task(task_name):
-    uri = 'http://localhost:5000/expensive-task/{}'.format(task_name))
+    uri = 'http://localhost:5000/expensive-task/{}'.format(task_name)
     return requests.post(uri).text
 
 def get_expensive_task_status(task_id):

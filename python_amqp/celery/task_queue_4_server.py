@@ -1,6 +1,6 @@
 from flask import Flask
 
-from task_queue_worker import expensive_task, fast_task
+from task_queue_4_worker import expensive_task, fast_task
 
 
 app = Flask(__name__)
