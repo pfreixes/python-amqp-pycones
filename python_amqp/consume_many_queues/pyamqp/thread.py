@@ -13,28 +13,31 @@ from python_amqp.consume_many_queues.consume_many_queues_base import ConsumeMany
 from python_amqp.consume_many_queues.consume_many_queues_base import EXCHANGE_NAME, QUEUE_NAME
 
 
+class StopConsuming(Exception):
+    pass
+
 class Consumer(threading.Thread):
     def __init__(self, *args, **kwargs):
         self._rx = 0
         self._messages = kwargs.pop("messages")
-        self._queue_name = None
+        self._queues = 0
         self._connection = amqp.Connection()
         self._channel = self._connection.channel()
         threading.Thread.__init__(self, *args, **kwargs)
 
     def add_queue(self, queue):
-        self._queue_name = queue
+        self._channel.basic_consume(queue, callback=self._callback)
+        self._queues += 1
+
+    def _callback(self, message):
+        message.channel.basic_ack(delivery_tag=message.delivery_tag)
+        self._rx += 1
+        if self._rx == (self._messages * self._queues):
+            self._channel.close()
+            self._connection.close()
+            raise StopConsuming()
 
     def run(self):
-        class StopConsuming(Exception):
-            pass
-        def consume(message):
-            message.channel.basic_ack(delivery_tag=message.delivery_tag)
-            self._rx += 1
-            if self._rx == self._messages:
-                raise StopConsuming()
-
-        self._channel.basic_consume(self._queue_name, callback=consume)
         while True:
             try:
                 self._connection.drain_events()
@@ -45,18 +48,22 @@ class Consumer(threading.Thread):
 class Thread(ConsumeManyQueuesBase):
     """
     This Test implements the consuming of messages using the Threading pattern with
-    thE pyamqp driver. Each thread instance holds a connection and each connection
-    binds to one queue.
+    thE pyamqp driver. Each thread instance one connections and each connection
+    binds to a set of queues.
 
-    Because pyamqp doesn't allow to consume from several queues using just one
-    Consumer this test is not parametrized and always run the number of connections
-    as the number of queues configured.
+    The amount of threads are parametrized with a grow factor of ^2 from 2 till the
+    first number greater than the number of queues divided by 2.
+
+    For example, for a 100 queues. Test executed are with 2, 4, 8, 16, 32 and 64
+    threads.
     """
     NAME = "Pyamqp_Threads"
     DESCRIPTION = "Each Thread runs a Pyamqp bloking adpater"
 
     def parameters(self):
-        return [{'connections': self.queues}]
+        return [{"connections": threads} for threads in
+                takewhile(lambda threads: threads < self.queues/2,
+                          map(lambda _: 2**_, xrange(1, self.queues)))]
 
     def setUp(self, connections=2):
         """ Create all threads necessary to run the parametrized test. Each thread will stablish a
