@@ -99,8 +99,8 @@ Celery: From the tutorial to the real world
 Celery is an asynchronous, distributed task queue. Thanks to using a message-oriented middleware like RabbitMQ, it achieves:
 
 * Superb transport performance
-* Queue and results durability
-* Scaling flexibility through complex routing
+* Queue and results persistence.
+* Load balancing through complex routing
 * Execution over a distributed network of workers
 * High availability.
 
@@ -117,6 +117,13 @@ Use case:
 
 We'll iterate over the tutorial-simple scenario facing some of the previously listed bottlenecks, seeing
 what tools Celery provides us to solve them. 
+
+Celery: From the tutorial to the real world
+===========================================
+
+Use case:
+
+.. image:: static/celery_demo_flux.png
 
 Celery: From the tutorial to the real world
 ===========================================
@@ -203,7 +210,14 @@ Where to go from there:
 Celery: From the tutorial to the real world
 ===========================================
 
-**Scaling vertically**. As the message frequency increases, the first step is to increase the worker throughput, and Celery gives this for free:
+**Scaling vertically**. As the message frequency increases, the first step is to increase the **worker throughput**, by adding more concurrent threads of execution.
+
+.. image:: static/celery_scaling_vertically.png
+
+Celery: From the tutorial to the real world
+===========================================
+
+**Scaling vertically**. And Celery gives this for free:
 
 Concurrency Pools:
 
@@ -212,29 +226,43 @@ Concurrency Pools:
 * Eventlet (still scary)
 * Gevent (still scary)
 
-Start a worker with N processes/threads/greenthreads:
+Start a worker with N processes/threads/greenthreads (**concurrency-slots** in Celery terminology):
 
 .. code-block:: bash
 
         $ celery worker -A module -P <pool> -c <concurrency-slots>
 
+
 Celery: From the tutorial to the real world
 ===========================================
 
 **Scaling horizontally**. Regardless of the pool used, at certain point increasing the concurrency-slots
-of the worker's pool will start to affects the worker's performance negatively. 
+of the worker's pool will start to affect the worker's performance negatively, and new worker nodes need to be started, potentially in a distributed network.
 
-* Careful with the prefetch_count of the consumer, or you might find tasks waiting in a worker's buffer while other nodes are idle. 
-* PREFETCH_MULTIPLIER: Celery handles this in a clever way. You configure the number of tasks waiting in the buffer for each concurrency-slot.
+* Careful with the **prefetch_count** of the consumer, or you might find tasks waiting in a worker's buffer while other nodes are idle. 
+* **PREFETCH_MULTIPLIER**: Celery handles this in a clever way. You configure the number of tasks waiting in the buffer for each concurrency-slot.
 
-**Worker specialization**. Also, if workers consume any kind of task, we can end up with fast task starved because more expensive tasks are blocking
-the worker nodes. 
 
-Celery routing facilities:
+.. image:: static/celery_scaling_horizontally.png
 
-* CELERY_ROUTES: task \*..1 queue mapping
-* CELERY_QUEUES: Detailed definition of queues, including:
-    * Exchange to which binded
+Celery: From the tutorial to the real world
+===========================================
+
+**Worker specialization**. When workers process any kind of task, we can end up with fast tasks starved because more expensive tasks are blocking
+the worker nodes.
+
+We can isolate each task by defining a different route for each task and have worker nodes consume only from each of those routes:
+
+.. image:: static/celery_worker_specialization.png
+
+Celery: From the tutorial to the real world
+===========================================
+
+**Worker specialization**. Celery provides the following tools for declaring the AMQP topology:
+
+* **CELERY_ROUTES**: task **\*..1** queue mapping
+* **CELERY_QUEUES**: Detailed definition of queues, including:
+    * Name and type of exchange to which is binded
     * Routing key of the binding
 
 Tell each worker node from which queue to consume:
@@ -272,7 +300,6 @@ Celery: From the tutorial to the real world
 **Polyglot Integration**. Finally, down the rabbit hole. Regardless of the bloated software that Celery is now, essentially it is build upon a quite simple protocol:
 
 .. image:: static/celery_protocol.png
-
 
 Which can be implemented by hand in any language with an AMQP client library, both client and worker.
 
@@ -523,3 +550,14 @@ The numbers in raw:
 conclusions
 ===========
 
+* Python has a good AMQP ecosystem, but not all options are production-ready. 
+    * Celery
+    * Pika
+    * Py-amqp & librabbitmq
+
+* Celery can be very simple or as complex as a production-ready system needs. 
+
+* In environments with fast tasks, when you scale vertically the performance is bounded by
+  the Python overhead.
+
+* GIL is not always the bad guy.
