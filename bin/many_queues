@@ -10,6 +10,7 @@ get info about each implementation.
 import sys
 import click
 import logging
+import cProfile
 
 from itertools import groupby
 
@@ -78,11 +79,21 @@ def cmd_info(test_name):
               type=int,
               help='Publish this amount of messsages to each queue. Default {}'.format(MESSAGES))
 @click.option('--plot-result', is_flag=True, help='Return results formatted to be used by gnuplot')
+@click.option('--profile', is_flag=True,
+              help='Profile the experiment to be inspected by pstats, saved at profile_many_queues.prof')
 @click.argument('test_name', nargs=-1)
-def cmd_run(queues, messages, plot_result, test_name):
+def cmd_run(queues, messages, plot_result, profile, test_name):
     # test_name is a tuple containing a names of tests, or when there is no 
     # arguments it is a empty tuple.
+    if profile:
+        pr = cProfile.Profile()
+        pr.enable()
+
     results = run(tests=test_name, queues=queues, messages=messages)
+
+    if profile:
+        pr.create_stats()
+        pr.dump_stats('profile_many_queues.prof')
 
     if plot_result:
         # A gnuplot data file expects a file like : 

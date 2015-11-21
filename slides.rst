@@ -294,64 +294,61 @@ publisher the same chance.
 Fair scheduling : Considering the throughput
 ============================================
 
-As we saw before at `Bottleneck points`_ slides, there are a set of points that have to be considered to improve the Consumer throughput, to
-process messages as fast as we can.
+To **process messages as fast as we can** we will: 
 
-* Scale vertically of the Consumer using concurrence or parallelism.
+* **Scale vertically** of the Consumer using concurrence or parallelism.
   
-  * Which is the best cardinality between queues N and consumers M ? How to perform the different N:M cardinality?
-  * Which is the best pattern to implement the multiple consumers paradigm? Concurrence or Parallelism?
+  * Which is the best pattern Concurrence or Parallelism?
+  * Which is the best cardinality between queues N and consumers M ? How perform N:M 
 
-* Reducing the latency between the Queue and the Consumer increasing the QoS.
+* **Reducing the latency** between the Queue and the Consumer increasing the QoS.
 
-  * Witch is the best QoS ?
+  * Which is the best QoS ?
 
-We will figure out all of these questions using diferent implementations with the different Python drivers and 
-comparing them.
 
 Fair scheduling : Concurrence or Parallelism 
 ============================================
 
-The idea is scale the consumer adding more executions flows. We did two aproximations : Threading or Asyncronous.
+The idea is **scale the consumer adding more execution flows**. Two aproximations : 
 
-* Drivers supporting bloking connections, then implemented using a threading aproximation:
+* **Threading**, Drivers with bloking *I/O*:
 
     * Rabbitpy
     * Pyamqp
     * Pika
 
-* Asyncronous
+* **Asyncronous**, Drivers supporting none bloking *I/O*:
 
     * Pika
     * Twisted
 
-For each experimented we tried a different amount of connections where the grow factor is *^2*, starting from 2 
-till the first number lesser than the number of queues divided by 2.
-
-For example, for an experiment of 100 queues we executed each driver test 2, 4, 8, 16, and 32 connections.
-
-For threading solutions each connection is holded by one thread.
+For each implementation we ran several times the same experiment using 2, 4, 8 and so on until get the first number 
+lesser than the number of queues divided by 2.
 
 
 Fair scheduling : Concurrence vs Parallelism
 ============================================
 
-The following graph compares the behaviour of the Asynchronous and Threading implementations consuming 5K messages
-from 100 queues using 2, 4, 8, 16, 32.
+**Asynchronous vs Threading** results: 
+
+  * 100 queues
+  * 10K messages
+  * using 2, 4, 8, 16 and 32 connections.
+  * Twisted and Rabbitpy just with 100 connections.
 
 .. image:: static/many_queues_async_vs_threading_840.png
 
-**Note: Twisted and Rabbitpy does not have suport to bind many queues for one connection. Therefore we started as many connections as many queues there are**
 
 
 Fair scheduling : Concurrence vs Parallelism 
 ============================================
 
-We thought that the threading patterns used by python programs were from the beggining a bad choose because of the GIL. **This is not at all True**.
+We thought that the threading patterns used by Python programs were a bad choose because of the GIL. 
 
-`Somebody`_ believes that in **short latency and fast tasks environments** threading patterns perform better than  asynchronous patterns, even with the Python GIL drawback.
+* `Somebody`_ believes that **short latency and fast tasks environments** threading patterns perform better than asynchronous patterns.
+* Even with the **Python GIL drawback**.
 
-**Can you guess which is the reason behind this sentence ?**
+**Can you guess which is the reason?**
 
 .. _Somebody : http://techspot.zzzeek.org/2015/02/15/asynchronous-python-and-databases/
 
@@ -359,9 +356,9 @@ Fair scheduling : Concurrence vs Parallelism
 ============================================
 
 
-These people argue that Python is enough slow to spend more time running the asyncronous stack than performing IO operations. The following
-chart tries to explain how a Python code running on top of an asyncronous pattern is executed, where the asyncronous code taskes more time
-than the I/O.
+These people argue that **Python is enough slow** to spend more time running the asyncronous stack than waiting for IO operations.
+
+This chart explains how a Python code running on top of an asyncronous pattern is executed.
 
 .. code:: bash
 
@@ -373,7 +370,7 @@ than the I/O.
                                         | Input |    |         Python Asyncronous Code       | Output | Thread 1
                                         +-------+    +---------------------------------------+--------+
                                                       
-However, the same programm running on an threading patterns with a lesser footprint of Python opcode, it performs better. Even with the GIL
+And the same execution flow running on top of a threading patterns with a less Python footprint performs better.
 
 .. code:: bash
 
@@ -391,27 +388,26 @@ However, the same programm running on an threading patterns with a lesser footpr
                                   |
                                   \_ _ _ _  GIL Adquired
 
-Each time that one *I/O* operation is performed the *GIL* is released, *GIL* wouldn't perturb your multi thread Python code if it 
+Each time that one *I/O* operation is performed the *GIL* is released, *GIL* **shouldn't perturb your multi thread Python code** if it 
 runs short tasks between many *I/O* operations.
 
+Fair scheduling : Concurrence/Parallelism + QoS > 1
+===================================================
 
-Fair scheduling : Pika concurrence with QoS > 1
-===============================================
+We picked up the best ones from the previous experiments: **Pika Asyncronous** and **PyAamqp Thread**
 
-Another way to increment the throughput of the worker is try to reduce the latence between the Consumer and the Broker. AMQP implements the
-QoS feature that allow to the consumer get mulitple messages. Once the Consumer decides to `ack`_ one message it can use the multiple flag 
-confirming automatically all of the previous messages.
+**Reduced the latence** between the Consumer and the Broker: 
 
-We implemented a *Pika Asyncronous* and *PyAamqp Thread* implementations that tries with different QoS value. We used the best number of connections
-got from the last experiment, 32 for *Pika* and 2 for *PyAmqp*:
+    * Using a *QoS* value greater than 1.
+    * Using the multiple flag to `ack`_  many messages at once.
 
 .. image:: static/many_queues_qos.png
 
 .. _ack : https://www.rabbitmq.com/confirms.html
 
 
-Fair scheduling : Pika concurrence with QoS > 1
-===============================================
+air scheduling : Concurrence/Parallelism + QoS > 1
+===================================================
 
 .. image:: static/i_have_no_fucking_clue_whats_going_on.jpg
 
@@ -420,6 +416,10 @@ Fair scheduling : Pika concurrence with QoS > 1
 
 Fair scheduling : And there was light
 =====================================
+
+* The *Real* time is the **Python code belonging to the full stack : driver + test code**
+* The *Sys* time is the **time consumed by the kernel code path used by the syscalls**.
+
 
 .. code:: bash
 
@@ -440,32 +440,60 @@ Fair scheduling : And there was light
     |Pika_Async_QoS     |{'prefetch': 32}         |     0.66|     0.63|     0.02|  15151|
     +------------------+-------------------------+---------+---------+---------+--------+
 
+
 Fair scheduling : And there was light
 =====================================
 
-Notice that:
+* Pika, Pyamqp
 
-* When the *Real* time is close to the *User* + *Sys* times means that we are reduced the *I/O* waits almost to zero. 
-* The *Real* time is the Python code belonging to the full stack : driver + test code
-* The *Sys* time is the time consumed by the syscalls run by the test.
+    * **we reduced the I/O waits almost to zero**, *Real* time is close to the *User* + *Sys*.
+    * **we reduced the User time because of the QoS**, removes a lot of expensive calls to perform ack.
 
+* Pyamqp
 
-There is no a sliverbullet but:
+    * **Real time lesser than the User + Sys**, why?
 
-* The *Sys* time in *asyncronous* patterns is lesser than *threading* patterns
-* With high pressure enviroments *GIL* is still a pain in the ass.
-* The issue is not with the Ascronous framework, it is related with the amount of Python bytcode necessary to dispatch a messaage.
+* Pika
+    * **Sys time used by is almost zero**, the *select* call returns inmediatly.
 
+Fair scheduling : And there was light
+=====================================
 
-And the last one:
+But both of them have reduced almost the foot print of the ack:
 
-* When Pika uses QoS removes a lot expensive calls to perform each Ack. This is because run better
+    * **Pika** *351ms* -> *14ms*
+    * **Pyamqp** *218ms* -> *15ms*
+
+Is this difference enought to explain the **two times difference** of message/seconds consumed ?
+
+.. code:: bash
+
+    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    10000     0.025    0.000    0.351    0.000 pika/channel.py:140(basic_ack)
+      328     0.001    0.000    0.014    0.000 pika(channel.py:140(basic_ack)
+
+    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    10000     0.018    0.000    0.218    0.000 amqp/channel.py:1534(basic_ack)
+      313     0.001    0.000    0.015    0.000 amqp/channel.py:1534(basic_ack)
+
+Legend:
+
+  * **tottime** Time spent by the function by it self
+  * **percall** tottime/ncalls
+  * **cumtime** Cumulative time spent by the function. 
+
+Fair scheduling : And there was light
+=====================================
+
+No, *Pika* performs better than *Pyamqp* because of how their are handling the connections:
+
+    * Pika uses a **explict connecion switching** made by the **select** syscall.
+    * Pyamqp uses a **implict connection switching** made by the **SO**. The **GIL doesn't help**.
 
 Fair scheduling : Python is slow by nature, using a C driver
 ============================================================
 
-But sometimes we forget how slow can Python be. The following table shows the performance difference between the **Librabbitmq** library
-and the best numbers got by the previous mplementations.
+**Pure Python vs C + Python** results: 
 
 .. code:: bash
 
@@ -479,7 +507,7 @@ and the best numbers got by the previous mplementations.
     +-------------------+---+-----+------------+
 
 
-Most of **Librabbitmq** is written using the *C* language, so the code executed by the Consumer that is handled by the interpreter
+Most of **Librabbitmq** is written using the *C* language, so the code executed by the consumer that is handled by the Python interpreter
 is just the consumer callback.
 
 The numbers in raw:
