@@ -223,8 +223,8 @@ Concurrency Pools:
 
 * prefork (default)
 * threads (experimental)
-* Eventlet (still scary)
-* Gevent (still scary)
+* Eventlet (Only for IO-bound)
+* Gevent (Only for IO-bound)
 
 Start a worker with N processes/threads/greenthreads (**concurrency-slots** in Celery terminology):
 
@@ -264,6 +264,27 @@ Celery: From the tutorial to the real world
 * **CELERY_QUEUES**: Detailed definition of queues, including:
     * Name and type of exchange to which is binded
     * Routing key of the binding
+
+Map tasks with queues:
+
+.. code-block:: python
+
+    CELERY_ROUTES = {
+        'tasks.expensive_task': {'queue': 'expensive',
+                                 'exchange': 'cpu-tasks',
+                                 'exchange_type': 'topic',
+                                 'routing_key': 'tasks.cpu.expensive'},
+        'tasks.fast_task': {'queue': 'fast',
+                            'exchange': 'cpu-tasks',
+                            'exchange_type': 'topic',
+                            'routing_key': 'tasks.cpu.fast'},
+        'tasks.io_task': {'queue': 'io'}
+    }
+    CELERY_QUEUES = {
+        'cpu-tasks': {'exchange': 'cpu-tasks',
+                      'exchange_type': 'topic',
+                      'routing_key': 'tasks.cpu.*'}
+    }
 
 Tell each worker node from which queue to consume:
 
@@ -559,5 +580,7 @@ conclusions
 
 * In environments with fast tasks, when you scale vertically the performance is bounded by
   the Python overhead.
-
+ 
 * GIL is not always the bad guy.
+
+* RabbitMQ does not scale vertically, once you get 40.000msg/s you need to scale horizontally.

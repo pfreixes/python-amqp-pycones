@@ -11,5 +11,5 @@ app.conf.update({
 
 @app.task(name='tasks.expensive_task')
 def expensive_task(task_n):
-    sleep(5)
+    sleep(3)
     return 'Hello, World, expensive task {}!'.format(task_n)

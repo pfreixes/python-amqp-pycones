@@ -1,4 +1,4 @@
-from time import sleep
+from time import time
 
 from celery import Celery
 
@@ -12,5 +12,8 @@ app.conf.update({
 
 @app.task(name='tasks.expensive_task')
 def expensive_task(task_n):
-    sleep(5)
+    start = time()
+    duration = 3  # seconds
+    while time() < start + duration:
+        pass
     return 'Hello, World, expensive task {}!'.format(task_n)
